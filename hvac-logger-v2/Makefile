@@ -3,9 +3,10 @@
 all: firmware.bin
 
 firmware.bin: *.ino
-	particle compile argon ./ --saveTo firmware.bin
+	particle compile boron ./ --saveTo firmware.bin
 
 flash: firmware.bin
+	particle usb dfu && sleep 2
 	particle flash --usb firmware.bin
 
 console:
