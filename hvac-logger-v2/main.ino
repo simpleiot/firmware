@@ -1,5 +1,7 @@
 #define ARDUINOJSON_ENABLE_PROGMEM 0
 #include <ArduinoJson.h>
+#include <OneWireBus.h>
+
 
 #define PIN_1_WIRE_UPSTREAM_EN		D18
 #define PIN_1_WIRE_DOWNSTREAM_EN	D19
@@ -10,24 +12,27 @@
 #define I2C_1WIRE_ADDRESS 0x18
 
 SYSTEM_THREAD(ENABLED);
-SYSTEM_MODE(SEMI_AUTOMATIC);
+SYSTEM_MODE(AUTOMATIC);
 
 const unsigned long UPDATE_INTERVAL = 1000;
 unsigned long lastUpdate = 0;
+
+OneWireBus oneWireUpstream = OneWireBus(PIN_1_WIRE_UPSTREAM_EN, I2C_1WIRE_ADDRESS);
+OneWireBus oneWireDownstream = OneWireBus(PIN_1_WIRE_DOWNSTREAM_EN, I2C_1WIRE_ADDRESS);
 
 void setup() {
   Serial.begin(115200);
   // delay a bit so the first println messages show up on console
   delay(600);
   Serial.println("HVAC Logger v2");
-  Serial.println("FW v0.0.1");
+  Serial.println("FW v0.0.2");
 
   // enable 1-wire drivers
   pinMode(PIN_1_WIRE_DOWNSTREAM_EN, OUTPUT);
   pinMode(PIN_1_WIRE_UPSTREAM_EN, OUTPUT);
 
   // can only enable one 1-wire bus at a time
-  digitalWrite(PIN_1_WIRE_DOWNSTREAM_EN, HIGH);
+  //digitalWrite(PIN_1_WIRE_DOWNSTREAM_EN, HIGH);
   //digitalWrite(PIN_1_WIRE_UPSTREAM_EN, HIGH);
 
   // enable pullups on i2c lines
@@ -100,12 +105,14 @@ void loop() {
 		String data = sample_to_json(s);
 		Serial.println(data);
 
-		readOneWire();
+		//readOneWire();
 
 		if (Cellular.ready() && data.length() > 0) {
 			Serial.println("publishing data to cloud");
 			Particle.publish("siot", data, PRIVATE);
 		}
+
+		oneWireDownstream.search();
 
 	}
 }
