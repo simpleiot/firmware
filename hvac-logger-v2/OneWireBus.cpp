@@ -49,13 +49,13 @@ int OneWireBus::_reset()
 
 	}
 
-	return RESET_RET_DEVICE_DETECTED;
+	return 0;
 }
 
 uint8_t OneWireBus::_waitIdle()
 {
-	delay(1);
 	for (int i=0; i<3; i++) {
+		delay(1);
 		int cnt = Wire.requestFrom(_i2cAddress, 1);
 		if (cnt <= 0) {
 			continue;
@@ -70,15 +70,83 @@ uint8_t OneWireBus::_waitIdle()
 	return 0;
 }
 
-void OneWireBus::search()
+int OneWireBus::search()
 {
+	int ret = 0;
+	int lastDiscrepency = -1;
+	uint64_t lastDevice;
+
 	Serial.println("Searching 1-wire bus");
 	digitalWrite(_selectPin, HIGH);
 
+	// Loop to do the search -- each iteration detects one device
+	while (true) {
+		// issue a search command
+		uint8_t cmd[] = {cmdReset};
+
+		ret = tx(cmd, sizeof(cmd), NULL, 0);
+
+		if (ret) {
+			goto search_error;
+		}
+
+		// loop to accumulate the 64-bits of an ID
+		int discrepancy = -1;
+		uint64_t device;
+		uint8_t idBytes[8];
+		for (int bit = 0; bit < 64; bit++) {
+			uint8_t dir;
+			if (bit < lastDiscrepency) {
+				// we haven't reached the last discrepancy yet, so we
+				// need to repeat the bits of the last device
+				dir = (lastDevice >> bit) & 1;
+			} else if (bit == lastDiscrepency) {
+				// we reached the bit where we picked 0 last time and
+				// now we need 1.
+				dir = 1;
+			}
+		}
+
+		break;
+	}
+
+
+search_error:
+	digitalWrite(_selectPin, LOW);
+	return ret;
+}
+
+int OneWireBus::tx(uint8_t *w, int wCnt, uint8_t *r, int rSize)
+{
 	int ret = _reset();
 
-	Serial.println("Search returned: ");
+	Serial.println("reset returned: ");
 	Serial.println(ret);
 
-	digitalWrite(_selectPin, LOW);
+	if (ret) {
+		return ret;
+	}
+
+	// send bytes onto 1-wire bus
+	Wire.beginTransmission(_i2cAddress);
+	Wire.write(cmd1WWrite);
+	for (int i=0; i<wCnt; i++) {
+		Wire.write(w[i]);
+	}
+	Wire.endTransmission();
+
+}
+
+
+TripletReturn OneWireBus::_searchTriplet(uint8_t direction)
+{
+	uint8_t dir;
+	if (direction != 0) {
+		dir = 0x80;
+	}
+
+	Wire.beginTransmission(_i2cAddress);
+	Wire.write(cmd1WTriplet);
+	Wire.write(dir);
+	int status = _waitIdle();
 }
