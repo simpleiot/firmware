@@ -2,7 +2,7 @@
 
 all: firmware.bin
 
-firmware.bin: *.ino
+firmware.bin: *.ino *.cpp *.h
 	particle compile boron ./ --saveTo firmware.bin
 
 flash: firmware.bin
