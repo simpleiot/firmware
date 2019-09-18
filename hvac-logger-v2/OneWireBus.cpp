@@ -1,5 +1,8 @@
-#include "OneWireBus.h"
 #include "Particle.h"
+#include "OneWireBus.h"
+#include "crc.h"
+#include "debug.h"
+#include "print.h"
 
 OneWireBus::OneWireBus(int selectPin, int i2cAddress):
 	_selectPin(selectPin),
@@ -31,48 +34,82 @@ const uint8_t statusSBR = (1<<5); // single bit result
 const uint8_t statusTSB = (1<<6); // logic level of 2nd bit of 1-wire triplet command
 const uint8_t statusDIR = (1<<7); // search direction that was taken by 3rd bit of 1-wire triplet
 
+char * OneWireErrorString(int err)
+{
+	switch (err) {
+		case OneWireErrorNoDevice:
+			return "no device";
+			break;
+		case OneWireErrorShortDetected:
+			return "short detected";
+			break;
+		case OneWireErrorTimeout:
+			return "timeout";
+			break;
+		case OneWireErrorDevicesDisappeared:
+			return "device disappeared";
+			break;
+		case OneWireErrorCrc:
+			return "crc";
+			break;
+		case OneWireErrorI2C:
+			return "i2c";
+			break;
+		default:
+			return "unknown";
+	}
+}
+
 int OneWireBus::_reset()
 {
 	Wire.beginTransmission(_i2cAddress);
 	Wire.write(cmd1WReset);
 	Wire.endTransmission();
-	uint8_t status = OneWireBus::_waitIdle();
+	WaitReturn waitRet = OneWireBus::_waitIdle();
 
-	if ((status & statusSD) != 0) {
-		Serial.println("short detected on bus");
-		return RESET_RET_SHORT_DETECTED;
+	if (waitRet.err) {
+		return waitRet.err;
 	}
 
-	if ((status & statusPPD) == 0) {
+	if ((waitRet.status & statusSD) != 0) {
+		Serial.println("short detected on bus");
+		return OneWireErrorShortDetected;
+	}
+
+	if ((waitRet.status & statusPPD) == 0) {
 		Serial.println("no device detected");
-		return  RESET_RET_NO_DEVICE;
+		return  OneWireErrorNoDevice;
 
 	}
 
 	return 0;
 }
 
-uint8_t OneWireBus::_waitIdle()
+WaitReturn OneWireBus::_waitIdle()
 {
-	for (int i=0; i<3; i++) {
-		delay(1);
+	WaitReturn ret = {0,0};
+
+	for (int i=0; i<10; i++) {
+		delayMicroseconds(100);
 		int cnt = Wire.requestFrom(_i2cAddress, 1);
 		if (cnt <= 0) {
 			continue;
 		}
-		uint8_t c = Wire.read();
-		if ((c & status1WB) == 0) {
-			return c;
+		ret.status = Wire.read();
+		if ((ret.status & status1WB) == 0) {
+			return ret;
 		}
 	}
 
+	ret.err = OneWireErrorTimeout;
+
 	Serial.println("_waitIdle timed out");
-	return 0;
+	return ret;
 }
 
 int OneWireBus::search()
 {
-	int ret = 0;
+	int err = 0;
 	int lastDiscrepency = -1;
 	uint64_t lastDevice;
 
@@ -81,18 +118,20 @@ int OneWireBus::search()
 
 	// Loop to do the search -- each iteration detects one device
 	while (true) {
+		digitalWrite(PIN_BLACK, HIGH);
+		Serial.println("search loop");
 		// issue a search command
 		uint8_t cmd[] = {cmdReset};
 
-		ret = tx(cmd, sizeof(cmd), NULL, 0);
+		err = tx(cmd, sizeof(cmd), NULL, 0);
 
-		if (ret) {
+		if (err) {
 			goto search_error;
 		}
 
 		// loop to accumulate the 64-bits of an ID
 		int discrepancy = -1;
-		uint64_t device;
+		uint64_t device = 0;
 		uint8_t idBytes[8];
 		for (int bit = 0; bit < 64; bit++) {
 			uint8_t dir;
@@ -105,36 +144,113 @@ int OneWireBus::search()
 				// now we need 1.
 				dir = 1;
 			}
+
+			// Perform triplet operation
+			digitalWrite(PIN_GREEN, HIGH);
+			TripletReturn tripRet = _searchTriplet(dir);
+			digitalWrite(PIN_GREEN, LOW);
+
+			Serial.print("bit: ");
+			Serial.print(bit);
+			Serial.print(" ->");
+			Serial.print(tripRet.GotZero);
+			Serial.print(tripRet.GotOne);
+			Serial.print(tripRet.Taken);
+			Serial.println("");
+
+			if (tripRet.err) {
+				err = tripRet.err;
+				goto search_error;
+			}
+
+			if (!tripRet.GotZero && !tripRet.GotOne) {
+				err = OneWireErrorDevicesDisappeared;
+				goto search_error;
+			}
+
+			if (tripRet.GotZero && tripRet.GotOne && !tripRet.Taken) {
+				/*
+				Serial.print("discrepancy at bit pos: ");
+				Serial.println(bit);
+				*/
+				discrepancy = bit;
+			}
+
+			device |= uint64_t(tripRet.Taken) << bit;
+
+			if ((bit&7) == 7) {
+				idBytes[bit>>3] = device >> (bit-7);
+			}
 		}
 
-		break;
+		Serial.print("Found device: ");
+		for (int i=sizeof(idBytes)-1; i >= 0 ; i--) {
+
+			Serial.printf("%.2x", idBytes[i]);
+		}
+		Serial.println("");
+
+		Serial.print("device: ");
+		print64(device);
+		Serial.println("");
+
+		// Verify the CRC and record the device if we got it right.
+		if (!CheckCRC(idBytes, sizeof(idBytes))) {
+			err = OneWireErrorCrc;
+			goto search_error;
+		}
+
+		lastDevice = device;
+		lastDiscrepency = discrepancy;
+		if (lastDiscrepency == -1) {
+			Serial.println("No more devices");
+			goto search_done;
+		}
+
+		//delay(100);
+
+		digitalWrite(PIN_BLACK, LOW);
 	}
 
-
 search_error:
+search_done:
 	digitalWrite(_selectPin, LOW);
-	return ret;
+	digitalWrite(PIN_BLACK, LOW);
+	digitalWrite(PIN_GREEN, LOW);
+	return err;
 }
 
 int OneWireBus::tx(uint8_t *w, int wCnt, uint8_t *r, int rSize)
 {
-	int ret = _reset();
+	int err = _reset();
 
-	Serial.println("reset returned: ");
-	Serial.println(ret);
+	Serial.print("reset returned: ");
+	Serial.println(err);
 
-	if (ret) {
-		return ret;
+	if (err) {
+		return err;
 	}
 
-	// send bytes onto 1-wire bus
-	Wire.beginTransmission(_i2cAddress);
-	Wire.write(cmd1WWrite);
 	for (int i=0; i<wCnt; i++) {
+		// send bytes onto 1-wire bus
+		Wire.beginTransmission(_i2cAddress);
+		Wire.write(cmd1WWrite);
 		Wire.write(w[i]);
-	}
-	Wire.endTransmission();
+		err = Wire.endTransmission();
 
+		if (err != 0) {
+			Serial.print("I2C error: ");
+			Serial.println(err);
+			err = OneWireErrorI2C;
+		}
+
+		WaitReturn waitRet = _waitIdle();
+		if (waitRet.err) {
+			return waitRet.err;
+		}
+	}
+
+	return err;
 }
 
 
@@ -145,8 +261,28 @@ TripletReturn OneWireBus::_searchTriplet(uint8_t direction)
 		dir = 0x80;
 	}
 
+	TripletReturn ret;
+
 	Wire.beginTransmission(_i2cAddress);
 	Wire.write(cmd1WTriplet);
 	Wire.write(dir);
-	int status = _waitIdle();
+	int err = Wire.endTransmission();
+
+	if (err != 0) {
+		Serial.print("I2C error: ");
+		Serial.println(err);
+		ret.err = OneWireErrorI2C;
+		return ret;
+	}
+
+	delayMicroseconds(500);
+
+	WaitReturn waitRet = _waitIdle();
+
+	ret.GotZero = (waitRet.status & statusSBR) == 0;
+	ret.GotOne = (waitRet.status & statusTSB) == 0;
+	ret.Taken = (waitRet.status & statusDIR) != 0;
+	ret.err = waitRet.err;
+
+	return ret;
 }

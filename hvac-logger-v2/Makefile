@@ -3,6 +3,7 @@
 all: firmware.bin
 
 firmware.bin: *.ino *.cpp *.h
+	ctags -R && ctags -a -R ~/Particle/community/libraries
 	particle compile boron ./ --saveTo firmware.bin
 
 flash: firmware.bin

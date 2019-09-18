@@ -2,14 +2,29 @@
 #include <inttypes.h>
 
 // errors that may be returned
-#define RESET_RET_NO_DEVICE -1
-#define RESET_RET_SHORT_DETECTED -2
+enum OneWireError {
+	OneWireErrorNoDevice = -1,
+	OneWireErrorShortDetected = -2,
+	OneWireErrorTimeout = -3,
+	OneWireErrorDevicesDisappeared = -4,
+	OneWireErrorCrc = -5,
+	OneWireErrorI2C = -6
+};
 
 typedef struct {
-	bool TripletGotZero;
-	bool TripletGotOne;
-	bool TripletTaken;
+	bool GotZero;
+	bool GotOne;
+	bool Taken;
+	int err;
 } TripletReturn;
+
+typedef struct {
+	uint8_t status;
+	int err;
+} WaitReturn;
+
+
+char * OneWireErrorString(int err);
 
 class OneWireBus
 {
@@ -17,7 +32,7 @@ class OneWireBus
 	int _i2cAddress;
 
 	int _reset();
-	uint8_t _waitIdle();
+	WaitReturn _waitIdle();
 	TripletReturn _searchTriplet(uint8_t direction);
 
 	public:

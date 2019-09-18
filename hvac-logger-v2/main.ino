@@ -1,7 +1,8 @@
 #define ARDUINOJSON_ENABLE_PROGMEM 0
 #include <ArduinoJson.h>
-#include <OneWireBus.h>
 
+#include "OneWireBus.h"
+#include "debug.h"
 
 #define PIN_1_WIRE_UPSTREAM_EN		D18
 #define PIN_1_WIRE_DOWNSTREAM_EN	D19
@@ -12,9 +13,9 @@
 #define I2C_1WIRE_ADDRESS 0x18
 
 SYSTEM_THREAD(ENABLED);
-SYSTEM_MODE(AUTOMATIC);
+SYSTEM_MODE(SEMI_AUTOMATIC);
 
-const unsigned long UPDATE_INTERVAL = 1000;
+const unsigned long UPDATE_INTERVAL = 3000;
 unsigned long lastUpdate = 0;
 
 OneWireBus oneWireUpstream = OneWireBus(PIN_1_WIRE_UPSTREAM_EN, I2C_1WIRE_ADDRESS);
@@ -25,11 +26,14 @@ void setup() {
   // delay a bit so the first println messages show up on console
   delay(600);
   Serial.println("HVAC Logger v2");
-  Serial.println("FW v0.0.2");
+  Serial.println("FW v0.0.3");
 
   // enable 1-wire drivers
   pinMode(PIN_1_WIRE_DOWNSTREAM_EN, OUTPUT);
   pinMode(PIN_1_WIRE_UPSTREAM_EN, OUTPUT);
+
+  pinMode(PIN_BLACK, OUTPUT);
+  pinMode(PIN_GREEN, OUTPUT);
 
   // can only enable one 1-wire bus at a time
   //digitalWrite(PIN_1_WIRE_DOWNSTREAM_EN, HIGH);
@@ -112,7 +116,11 @@ void loop() {
 			Particle.publish("siot", data, PRIVATE);
 		}
 
-		oneWireDownstream.search();
-
+		int err = oneWireDownstream.search();
+		if (err) {
+			Serial.print("one wire search error: ");
+			char *errS = OneWireErrorString(err);
+			Serial.println(errS);
+		}
 	}
 }
