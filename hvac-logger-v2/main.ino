@@ -25,7 +25,7 @@ void setup() {
 	Serial.begin(115200);
 	// delay a bit so the first println messages show up on console
 	delay(600);
-	Serial.println("HVAC Logger v2");
+	Serial.println("Simple IoT Gateway");
 	Serial.println("FW v0.0.3");
 
 	// enable 1-wire drivers
