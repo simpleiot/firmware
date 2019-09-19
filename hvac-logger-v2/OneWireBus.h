@@ -30,13 +30,14 @@ class OneWireBus
 {
 	int _selectPin;
 	int _i2cAddress;
+	char * _name;
 
 	int _reset();
 	WaitReturn _waitIdle();
 	TripletReturn _searchTriplet(uint8_t direction);
 
 	public:
-	OneWireBus(int selectPin, int i2cAddress);
+	OneWireBus(char *name, int selectPin, int i2cAddress);
 
 	int search();
 	int tx(uint8_t *w, int wCnt, uint8_t *r, int rSize);

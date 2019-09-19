@@ -4,7 +4,8 @@
 #include "debug.h"
 #include "print.h"
 
-OneWireBus::OneWireBus(int selectPin, int i2cAddress):
+OneWireBus::OneWireBus(char *name, int selectPin, int i2cAddress):
+	_name(name),
 	_selectPin(selectPin),
 	_i2cAddress(i2cAddress)
 {

@@ -15,26 +15,25 @@
 SYSTEM_THREAD(ENABLED);
 SYSTEM_MODE(AUTOMATIC);
 
-
-OneWireBus oneWireUpstream = OneWireBus(PIN_1_WIRE_UPSTREAM_EN, I2C_1WIRE_ADDRESS);
-OneWireBus oneWireDownstream = OneWireBus(PIN_1_WIRE_DOWNSTREAM_EN, I2C_1WIRE_ADDRESS);
+OneWireBus oneWireUpstream = OneWireBus("upstream", PIN_1_WIRE_UPSTREAM_EN, I2C_1WIRE_ADDRESS);
+OneWireBus oneWireDownstream = OneWireBus("downstream", PIN_1_WIRE_DOWNSTREAM_EN, I2C_1WIRE_ADDRESS);
 
 void setup() {
-  Serial.begin(115200);
-  // delay a bit so the first println messages show up on console
-  delay(600);
-  Serial.println("HVAC Logger v2");
-  Serial.println("FW v0.0.3");
+	Serial.begin(115200);
+	// delay a bit so the first println messages show up on console
+	delay(600);
+	Serial.println("HVAC Logger v2");
+	Serial.println("FW v0.0.3");
 
-  // enable 1-wire drivers
-  pinMode(PIN_1_WIRE_DOWNSTREAM_EN, OUTPUT);
-  pinMode(PIN_1_WIRE_UPSTREAM_EN, OUTPUT);
+	// enable 1-wire drivers
+	pinMode(PIN_1_WIRE_DOWNSTREAM_EN, OUTPUT);
+	pinMode(PIN_1_WIRE_UPSTREAM_EN, OUTPUT);
 
-  pinMode(PIN_BLACK, OUTPUT);
-  pinMode(PIN_GREEN, OUTPUT);
+	pinMode(PIN_BLACK, OUTPUT);
+	pinMode(PIN_GREEN, OUTPUT);
 
-  Wire.setSpeed(CLOCK_SPEED_400KHZ);
-  Wire.begin();
+	Wire.setSpeed(CLOCK_SPEED_400KHZ);
+	Wire.begin();
 }
 
 struct sample {
@@ -75,8 +74,7 @@ unsigned long lastPublish = 0;
 void loop() {
 	unsigned long currentMillis = millis();
 
-	if (currentMillis - lastUpdate >= UPDATE_INTERVAL)
-	{
+	if (currentMillis - lastUpdate >= UPDATE_INTERVAL) {
 		lastUpdate = currentMillis;
 
 		int err = oneWireDownstream.search();
