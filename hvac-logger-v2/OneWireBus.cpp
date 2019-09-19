@@ -78,12 +78,10 @@ int OneWireBus::_reset()
 	}
 
 	if ((waitRet.status & statusSD) != 0) {
-		Serial.println("short detected on bus");
 		return OneWireErrorShortDetected;
 	}
 
 	if ((waitRet.status & statusPPD) == 0) {
-		Serial.println("no device detected");
 		return  OneWireErrorNoDevice;
 
 	}
@@ -108,8 +106,6 @@ WaitReturn OneWireBus::_waitIdle()
 	}
 
 	ret.err = OneWireErrorTimeout;
-
-	Serial.println("_waitIdle timed out");
 	return ret;
 }
 
@@ -152,8 +148,6 @@ SearchReturn OneWireBus::search()
 		TripletReturn tripRet = _searchTriplet(dir);
 		digitalWrite(PIN_GREEN, LOW);
 
-		//Serial.printf("bit: %i -> %i%i%i\n", bit, tripRet.GotZero, tripRet.GotOne, tripRet.Taken);
-
 		if (tripRet.err) {
 			ret.err = tripRet.err;
 			goto search_error;
@@ -181,16 +175,9 @@ SearchReturn OneWireBus::search()
 		goto search_error;
 	}
 
-	/*
-	Serial.print("device: ");
-	print64(ret.device);
-	Serial.println("");
-	*/
-
 	_searchLastDevice = device;
 	_searchLastDiscrepency = discrepancy;
 	if (_searchLastDiscrepency == -1) {
-		//Serial.println("No more devices");
 		ret.err = OneWireErrorLastDevice;
 		_searchLastDevice = 0;
 		goto search_done;
@@ -220,8 +207,6 @@ int OneWireBus::tx(uint8_t *w, int wCnt, uint8_t *r, int rSize)
 		err = Wire.endTransmission();
 
 		if (err != 0) {
-			Serial.print("I2C error: ");
-			Serial.println(err);
 			err = OneWireErrorI2C;
 		}
 
@@ -250,8 +235,6 @@ TripletReturn OneWireBus::_searchTriplet(uint8_t direction)
 	int err = Wire.endTransmission();
 
 	if (err != 0) {
-		Serial.print("I2C error: ");
-		Serial.println(err);
 		ret.err = OneWireErrorI2C;
 		return ret;
 	}
@@ -266,4 +249,9 @@ TripletReturn OneWireBus::_searchTriplet(uint8_t direction)
 	ret.err = waitRet.err;
 
 	return ret;
+}
+
+const char * OneWireBus::getName()
+{
+	return _name;
 }

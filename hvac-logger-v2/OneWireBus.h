@@ -53,6 +53,7 @@ class OneWireBus
 	// search is designed to be call repeatably and returns devices IDs
 	// found. After it hits the last devices, the search is reset internally.
 	SearchReturn search();
+	const char* getName();
 
 	int tx(uint8_t *w, int wCnt, uint8_t *r, int rSize);
 };

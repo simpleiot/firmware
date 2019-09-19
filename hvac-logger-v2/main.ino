@@ -1,7 +1,7 @@
 #define ARDUINOJSON_ENABLE_PROGMEM 0
 #include <ArduinoJson.h>
 
-#include "OneWireBus.h"
+#include "OneWireManager.h"
 #include "debug.h"
 #include "print.h"
 
@@ -19,6 +19,8 @@ SYSTEM_MODE(AUTOMATIC);
 OneWireBus oneWireUpstream = OneWireBus("upstream", PIN_1_WIRE_UPSTREAM_EN, I2C_1WIRE_ADDRESS);
 OneWireBus oneWireDownstream = OneWireBus("downstream", PIN_1_WIRE_DOWNSTREAM_EN, I2C_1WIRE_ADDRESS);
 
+OneWireManager oneWireManager = OneWireManager();
+
 void setup() {
 	Serial.begin(115200);
 	// delay a bit so the first println messages show up on console
@@ -32,6 +34,9 @@ void setup() {
 
 	pinMode(PIN_BLACK, OUTPUT);
 	pinMode(PIN_GREEN, OUTPUT);
+
+	oneWireManager.addBus(&oneWireUpstream);
+	oneWireManager.addBus(&oneWireDownstream);
 
 	Wire.setSpeed(CLOCK_SPEED_400KHZ);
 	Wire.begin();
@@ -78,22 +83,7 @@ void loop() {
 	if (currentMillis - lastUpdate >= UPDATE_INTERVAL) {
 		lastUpdate = currentMillis;
 
-		Serial.println("Scanning one wire bus: ");
-
-		while (true) {
-			SearchReturn ret = oneWireDownstream.search();
-			if (ret.err && ret.err != OneWireErrorLastDevice) {
-				char *errS = OneWireErrorString(ret.err);
-				Serial.printf("Search returned an error: %s\n", errS);
-				break;
-			}
-
-			Serial.println(formatU64Hex(ret.device));
-			if (ret.err == OneWireErrorLastDevice) {
-				break;
-			}
-		};
-
+		oneWireManager.search();
 
 		if (currentMillis - lastPublish >= PUBLISH_INTERVAL) {
 			lastPublish = currentMillis;
