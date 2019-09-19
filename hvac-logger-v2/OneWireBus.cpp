@@ -5,6 +5,8 @@
 #include "print.h"
 
 OneWireBus::OneWireBus(char *name, int selectPin, int i2cAddress):
+	_searchLastDiscrepency(-1),
+	_searchLastDevice(0),
 	_name(name),
 	_selectPin(selectPin),
 	_i2cAddress(i2cAddress)
@@ -55,6 +57,9 @@ char * OneWireErrorString(int err)
 			break;
 		case OneWireErrorI2C:
 			return "i2c";
+			break;
+		case OneWireErrorLastDevice:
+			return "no more devices";
 			break;
 		default:
 			return "unknown";
@@ -108,89 +113,87 @@ WaitReturn OneWireBus::_waitIdle()
 	return ret;
 }
 
-int OneWireBus::search()
+
+
+SearchReturn OneWireBus::search()
 {
-	int err = 0;
-	int lastDiscrepency = -1;
-	uint64_t lastDevice = 0;
+	SearchReturn ret = {0,0};
 
-	Serial.println("Searching 1-wire bus");
 	digitalWrite(_selectPin, HIGH);
+	digitalWrite(PIN_BLACK, HIGH);
 
-	// Loop to do the search -- each iteration detects one device
-	while (true) {
-		digitalWrite(PIN_BLACK, HIGH);
-		// issue a search command
-		uint8_t cmd[] = {cmdReset};
+	int discrepancy = -1;
+	uint64_t device = 0;
+	uint8_t idBytes[8];
 
-		err = tx(cmd, sizeof(cmd), NULL, 0);
+	// issue a search command
+	uint8_t cmd[] = {cmdReset};
 
-		if (err) {
+	ret.err = tx(cmd, sizeof(cmd), NULL, 0);
+
+	if (ret.err) {
+		goto search_error;
+	}
+
+	for (int bit = 0; bit < 64; bit++) {
+		uint8_t dir = 0;
+		if (bit < _searchLastDiscrepency) {
+			// we haven't reached the last discrepancy yet, so we
+			// need to repeat the bits of the last device
+			dir = (_searchLastDevice >> bit) & 1;
+		} else if (bit == _searchLastDiscrepency) {
+			// we reached the bit where we picked 0 last time and
+			// now we need 1.
+			dir = 1;
+		}
+
+		// Perform triplet operation
+		digitalWrite(PIN_GREEN, HIGH);
+		TripletReturn tripRet = _searchTriplet(dir);
+		digitalWrite(PIN_GREEN, LOW);
+
+		//Serial.printf("bit: %i -> %i%i%i\n", bit, tripRet.GotZero, tripRet.GotOne, tripRet.Taken);
+
+		if (tripRet.err) {
+			ret.err = tripRet.err;
 			goto search_error;
 		}
 
-		// loop to accumulate the 64-bits of an ID
-		int discrepancy = -1;
-		uint64_t device = 0;
-		uint8_t idBytes[8];
-		for (int bit = 0; bit < 64; bit++) {
-			uint8_t dir = 0;
-			if (bit < lastDiscrepency) {
-				// we haven't reached the last discrepancy yet, so we
-				// need to repeat the bits of the last device
-				dir = (lastDevice >> bit) & 1;
-			} else if (bit == lastDiscrepency) {
-				// we reached the bit where we picked 0 last time and
-				// now we need 1.
-				dir = 1;
-			}
-
-			// Perform triplet operation
-			digitalWrite(PIN_GREEN, HIGH);
-			TripletReturn tripRet = _searchTriplet(dir);
-			digitalWrite(PIN_GREEN, LOW);
-
-			//Serial.printf("bit: %i -> %i%i%i\n", bit, tripRet.GotZero, tripRet.GotOne, tripRet.Taken);
-
-			if (tripRet.err) {
-				err = tripRet.err;
-				goto search_error;
-			}
-
-			if (!tripRet.GotZero && !tripRet.GotOne) {
-				err = OneWireErrorDevicesDisappeared;
-				goto search_error;
-			}
-
-			if (tripRet.GotZero && tripRet.GotOne && !tripRet.Taken) {
-				discrepancy = bit;
-			}
-
-			device |= uint64_t(tripRet.Taken) << bit;
-
-			if ((bit&7) == 7) {
-				idBytes[bit>>3] = device >> (bit-7);
-			}
-		}
-
-		Serial.print("device: ");
-		print64(device);
-		Serial.println("");
-
-		// Verify the CRC and record the device if we got it right.
-		if (!CheckCRC(idBytes, sizeof(idBytes))) {
-			err = OneWireErrorCrc;
+		if (!tripRet.GotZero && !tripRet.GotOne) {
+			ret.err = OneWireErrorDevicesDisappeared;
 			goto search_error;
 		}
 
-		lastDevice = device;
-		lastDiscrepency = discrepancy;
-		if (lastDiscrepency == -1) {
-			Serial.println("No more devices");
-			goto search_done;
+		if (tripRet.GotZero && tripRet.GotOne && !tripRet.Taken) {
+			discrepancy = bit;
 		}
 
-		digitalWrite(PIN_BLACK, LOW);
+		ret.device |= uint64_t(tripRet.Taken) << bit;
+
+		if ((bit&7) == 7) {
+			idBytes[bit>>3] = ret.device >> (bit-7);
+		}
+	}
+
+	// Verify the CRC and record the device if we got it right.
+	if (!CheckCRC(idBytes, sizeof(idBytes))) {
+		ret.err = OneWireErrorCrc;
+		goto search_error;
+	}
+
+	/*
+	Serial.print("device: ");
+	print64(ret.device);
+	Serial.println("");
+	*/
+
+	_searchLastDevice = device;
+	_searchLastDiscrepency = discrepancy;
+	if (_searchLastDiscrepency == -1) {
+		//Serial.println("No more devices");
+		ret.err = OneWireErrorLastDevice;
+		_searchLastDevice = 0;
+		goto search_done;
 	}
 
 search_error:
@@ -198,7 +201,7 @@ search_done:
 	digitalWrite(_selectPin, LOW);
 	digitalWrite(PIN_BLACK, LOW);
 	digitalWrite(PIN_GREEN, LOW);
-	return err;
+	return ret;
 }
 
 int OneWireBus::tx(uint8_t *w, int wCnt, uint8_t *r, int rSize)

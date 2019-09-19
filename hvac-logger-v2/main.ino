@@ -3,6 +3,7 @@
 
 #include "OneWireBus.h"
 #include "debug.h"
+#include "print.h"
 
 #define PIN_1_WIRE_UPSTREAM_EN		D18
 #define PIN_1_WIRE_DOWNSTREAM_EN	D19
@@ -77,7 +78,22 @@ void loop() {
 	if (currentMillis - lastUpdate >= UPDATE_INTERVAL) {
 		lastUpdate = currentMillis;
 
-		int err = oneWireDownstream.search();
+		Serial.println("Scanning one wire bus: ");
+
+		while (true) {
+			SearchReturn ret = oneWireDownstream.search();
+			if (ret.err && ret.err != OneWireErrorLastDevice) {
+				char *errS = OneWireErrorString(ret.err);
+				Serial.printf("Search returned an error: %s\n", errS);
+				break;
+			}
+
+			Serial.println(formatU64Hex(ret.device));
+			if (ret.err == OneWireErrorLastDevice) {
+				break;
+			}
+		};
+
 
 		if (currentMillis - lastPublish >= PUBLISH_INTERVAL) {
 			lastPublish = currentMillis;
@@ -101,12 +117,6 @@ void loop() {
 			if (Cellular.ready() && data.length() > 0) {
 				Serial.println("publishing data to cloud");
 				Particle.publish("siot", data, PRIVATE);
-			}
-
-			if (err) {
-				Serial.print("one wire search error: ");
-				char *errS = OneWireErrorString(err);
-				Serial.println(errS);
 			}
 		}
 	}
