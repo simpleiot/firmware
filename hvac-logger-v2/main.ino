@@ -13,10 +13,8 @@
 #define I2C_1WIRE_ADDRESS 0x18
 
 SYSTEM_THREAD(ENABLED);
-SYSTEM_MODE(SEMI_AUTOMATIC);
+SYSTEM_MODE(AUTOMATIC);
 
-const unsigned long UPDATE_INTERVAL = 3000;
-unsigned long lastUpdate = 0;
 
 OneWireBus oneWireUpstream = OneWireBus(PIN_1_WIRE_UPSTREAM_EN, I2C_1WIRE_ADDRESS);
 OneWireBus oneWireDownstream = OneWireBus(PIN_1_WIRE_DOWNSTREAM_EN, I2C_1WIRE_ADDRESS);
@@ -35,15 +33,7 @@ void setup() {
   pinMode(PIN_BLACK, OUTPUT);
   pinMode(PIN_GREEN, OUTPUT);
 
-  // can only enable one 1-wire bus at a time
-  //digitalWrite(PIN_1_WIRE_DOWNSTREAM_EN, HIGH);
-  //digitalWrite(PIN_1_WIRE_UPSTREAM_EN, HIGH);
-
-  // enable pullups on i2c lines
-  //pinMode(PIN_SDA, INPUT_PULLUP);
-  //pinMode(PIN_SCL, INPUT_PULLUP);
-
-  //Wire.setSpeed(CLOCK_SPEED_100KHZ);
+  Wire.setSpeed(CLOCK_SPEED_400KHZ);
   Wire.begin();
 }
 
@@ -52,17 +42,6 @@ struct sample {
 	String s_type;
 	float value;
 };
-
-void readOneWire() {
-	int ret = Wire.requestFrom(I2C_1WIRE_ADDRESS, 1);
-	Serial.println("one wire returned: ");
-	Serial.println(ret);
-
-	while(Wire.available()){   // slave may send less than requested
-		char c = Wire.read();    // receive a byte as character
-		Serial.print(c);         // print the character
-	}
-}
 
 // convert a sample struct to JSON. Unused or 0 fields are not populated
 String sample_to_json(struct sample s) {
@@ -88,39 +67,49 @@ String sample_to_json(struct sample s) {
 
 float tempSim = 60;
 
+const unsigned long UPDATE_INTERVAL = 3000;
+const unsigned long PUBLISH_INTERVAL = 15*60*1000;
+unsigned long lastUpdate = 0;
+unsigned long lastPublish = 0;
+
 void loop() {
 	unsigned long currentMillis = millis();
 
 	if (currentMillis - lastUpdate >= UPDATE_INTERVAL)
 	{
-		lastUpdate = millis();
-
-		tempSim += 1;
-		if (tempSim > 80) {
-			tempSim = 60;
-		}
-
-		struct sample s = {
-			.id = "12343221",
-			.s_type = "temp",
-			.value = tempSim
-		};
-
-		String data = sample_to_json(s);
-		Serial.println(data);
-
-		//readOneWire();
-
-		if (Cellular.ready() && data.length() > 0) {
-			Serial.println("publishing data to cloud");
-			Particle.publish("siot", data, PRIVATE);
-		}
+		lastUpdate = currentMillis;
 
 		int err = oneWireDownstream.search();
-		if (err) {
-			Serial.print("one wire search error: ");
-			char *errS = OneWireErrorString(err);
-			Serial.println(errS);
+
+		if (currentMillis - lastPublish >= PUBLISH_INTERVAL) {
+			lastPublish = currentMillis;
+
+			tempSim += 1;
+
+			if (tempSim > 80) {
+				tempSim = 60;
+			}
+
+			struct sample s = {
+				.id = "12343221",
+				.s_type = "temp",
+				.value = tempSim
+			};
+
+			String data = sample_to_json(s);
+			Serial.println(data);
+
+
+			if (Cellular.ready() && data.length() > 0) {
+				Serial.println("publishing data to cloud");
+				Particle.publish("siot", data, PRIVATE);
+			}
+
+			if (err) {
+				Serial.print("one wire search error: ");
+				char *errS = OneWireErrorString(err);
+				Serial.println(errS);
+			}
 		}
 	}
 }

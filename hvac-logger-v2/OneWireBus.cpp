@@ -111,7 +111,7 @@ int OneWireBus::search()
 {
 	int err = 0;
 	int lastDiscrepency = -1;
-	uint64_t lastDevice;
+	uint64_t lastDevice = 0;
 
 	Serial.println("Searching 1-wire bus");
 	digitalWrite(_selectPin, HIGH);
@@ -119,7 +119,6 @@ int OneWireBus::search()
 	// Loop to do the search -- each iteration detects one device
 	while (true) {
 		digitalWrite(PIN_BLACK, HIGH);
-		Serial.println("search loop");
 		// issue a search command
 		uint8_t cmd[] = {cmdReset};
 
@@ -134,7 +133,7 @@ int OneWireBus::search()
 		uint64_t device = 0;
 		uint8_t idBytes[8];
 		for (int bit = 0; bit < 64; bit++) {
-			uint8_t dir;
+			uint8_t dir = 0;
 			if (bit < lastDiscrepency) {
 				// we haven't reached the last discrepancy yet, so we
 				// need to repeat the bits of the last device
@@ -150,13 +149,7 @@ int OneWireBus::search()
 			TripletReturn tripRet = _searchTriplet(dir);
 			digitalWrite(PIN_GREEN, LOW);
 
-			Serial.print("bit: ");
-			Serial.print(bit);
-			Serial.print(" ->");
-			Serial.print(tripRet.GotZero);
-			Serial.print(tripRet.GotOne);
-			Serial.print(tripRet.Taken);
-			Serial.println("");
+			//Serial.printf("bit: %i -> %i%i%i\n", bit, tripRet.GotZero, tripRet.GotOne, tripRet.Taken);
 
 			if (tripRet.err) {
 				err = tripRet.err;
@@ -169,10 +162,6 @@ int OneWireBus::search()
 			}
 
 			if (tripRet.GotZero && tripRet.GotOne && !tripRet.Taken) {
-				/*
-				Serial.print("discrepancy at bit pos: ");
-				Serial.println(bit);
-				*/
 				discrepancy = bit;
 			}
 
@@ -182,13 +171,6 @@ int OneWireBus::search()
 				idBytes[bit>>3] = device >> (bit-7);
 			}
 		}
-
-		Serial.print("Found device: ");
-		for (int i=sizeof(idBytes)-1; i >= 0 ; i--) {
-
-			Serial.printf("%.2x", idBytes[i]);
-		}
-		Serial.println("");
 
 		Serial.print("device: ");
 		print64(device);
@@ -207,8 +189,6 @@ int OneWireBus::search()
 			goto search_done;
 		}
 
-		//delay(100);
-
 		digitalWrite(PIN_BLACK, LOW);
 	}
 
@@ -223,9 +203,6 @@ search_done:
 int OneWireBus::tx(uint8_t *w, int wCnt, uint8_t *r, int rSize)
 {
 	int err = _reset();
-
-	Serial.print("reset returned: ");
-	Serial.println(err);
 
 	if (err) {
 		return err;
@@ -256,7 +233,7 @@ int OneWireBus::tx(uint8_t *w, int wCnt, uint8_t *r, int rSize)
 
 TripletReturn OneWireBus::_searchTriplet(uint8_t direction)
 {
-	uint8_t dir;
+	uint8_t dir = 0;
 	if (direction != 0) {
 		dir = 0x80;
 	}

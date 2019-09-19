@@ -1,3 +1,4 @@
+#include "Particle.h"
 #include "crc.h"
 
 uint8_t crcTable[] = {
@@ -26,6 +27,8 @@ uint8_t CalcCRC(uint8_t *buf, int size)
 		uint8_t b = buf[i];
 		crc = crcTable[crc^b];
 	}
+
+	return crc;
 }
 
 bool CheckCRC(uint8_t *buf, int size)
@@ -34,5 +37,8 @@ bool CheckCRC(uint8_t *buf, int size)
 		return false;
 	}
 
-	return CalcCRC(buf, size-1) == buf[size-1];
+	uint8_t crc = buf[size-1];
+	uint8_t calcCrc = CalcCRC(buf, size-1);
+
+	return crc == calcCrc;
 }
