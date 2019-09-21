@@ -1,4 +1,4 @@
-# HVAC Logger example application for Particle mesh devices
+# Firmware for Particle based Simple IoT gateway
 
 - install particle cli: https://docs.particle.io/tutorials/developer-tools/cli/
 - build software: `make all`
