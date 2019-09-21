@@ -85,6 +85,9 @@ void loop() {
 
 		oneWireManager.search();
 
+		Serial.printf("One wire errors:\n%s",
+				oneWireManager.getErrors().string().c_str());
+
 		if (currentMillis - lastPublish >= PUBLISH_INTERVAL) {
 			lastPublish = currentMillis;
 

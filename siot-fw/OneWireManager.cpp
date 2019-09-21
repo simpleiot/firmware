@@ -1,6 +1,49 @@
 #include "OneWireManager.h"
 #include "print.h"
 
+OneWireErrorCounts::OneWireErrorCounts() :
+	shortDetected(0),
+	timeout(0),
+	deviceDisappeared(0),
+	crc(0),
+	i2c(0)
+{
+}
+
+void OneWireErrorCounts::error(int error)
+{
+	switch (error) {
+		case OneWireErrorShortDetected:
+			shortDetected++;
+			break;
+		case OneWireErrorTimeout:
+			timeout++;
+			break;
+		case OneWireErrorDevicesDisappeared:
+			deviceDisappeared++;
+			break;
+		case OneWireErrorCrc:
+			crc++;
+			break;
+		case OneWireErrorI2C:
+			i2c++;
+			break;
+		default:
+			Serial.printf("Warning: OneWireErrorCounts, don't know how to handle: %i\n", error);
+
+	}
+}
+
+String OneWireErrorCounts::string()
+{
+	return String::format("shorts: %i\ntimeouts: %i\ndisappeared: %i\ncrc: %i\ni2c: %i\n",
+			shortDetected,
+			timeout,
+			deviceDisappeared,
+			crc,
+			i2c);
+}
+
 OneWireManager::OneWireManager()
 {
 }
@@ -29,13 +72,22 @@ bool OneWireManager::search()
 	std::vector<bool> found(_devices.size(), false);
 
 	for (unsigned int i=0; i < _busses.size(); i++) {
+		int errCnt = 0;
 		while (true) {
 			SearchReturn ret = _busses[i]->search();
 			if (ret.err && ret.err != OneWireErrorLastDevice &&
 					ret.err != OneWireErrorNoDevice) {
 				char *errS = OneWireErrorString(ret.err);
 				Serial.printf("Search returned an error: %s\n", errS);
-				break;
+
+				// keep track of error counts
+				_errorCounts.error(ret.err);
+
+				errCnt++;
+				if (errCnt > 5) {
+					Serial.println("too many errors while searching bus, breaking");
+					break;
+				}
 			}
 
 			if (ret.err == OneWireErrorNoDevice) {
@@ -75,4 +127,9 @@ bool OneWireManager::search()
 	}
 
 	return modified;
+}
+
+OneWireErrorCounts OneWireManager::getErrors()
+{
+	return _errorCounts;
 }
