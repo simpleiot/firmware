@@ -1,50 +1,9 @@
 #include "OneWireManager.h"
+#include "Ds18b20.h"
 #include "print.h"
 
-OneWireErrorCounts::OneWireErrorCounts() :
-	shortDetected(0),
-	timeout(0),
-	deviceDisappeared(0),
-	crc(0),
-	i2c(0)
-{
-}
-
-void OneWireErrorCounts::error(int error)
-{
-	switch (error) {
-		case OneWireErrorShortDetected:
-			shortDetected++;
-			break;
-		case OneWireErrorTimeout:
-			timeout++;
-			break;
-		case OneWireErrorDevicesDisappeared:
-			deviceDisappeared++;
-			break;
-		case OneWireErrorCrc:
-			crc++;
-			break;
-		case OneWireErrorI2C:
-			i2c++;
-			break;
-		default:
-			Serial.printf("Warning: OneWireErrorCounts, don't know how to handle: %i\n", error);
-
-	}
-}
-
-String OneWireErrorCounts::string()
-{
-	return String::format("shorts: %i\ntimeouts: %i\ndisappeared: %i\ncrc: %i\ni2c: %i\n",
-			shortDetected,
-			timeout,
-			deviceDisappeared,
-			crc,
-			i2c);
-}
-
-OneWireManager::OneWireManager()
+OneWireManager::OneWireManager():
+	_readIndex(0)
 {
 }
 
@@ -66,6 +25,20 @@ int OneWireManager::_findDevice(OneWireDevice d)
 
 }
 
+int OneWireManager::_initDevice(OneWireDevice *d)
+{
+	Serial.printf("Initializing %s\n", d->string().c_str());
+	switch (d->family()) {
+		case OneWireFamTemp:
+			{
+				Ds18b20 s = Ds18b20(_busses[d->busIndex], d->id);
+				return s.init();
+			}
+		default:
+			return OneWireErrorUnsupported;
+	}
+}
+
 bool OneWireManager::search()
 {
 	bool modified = false;
@@ -75,9 +48,9 @@ bool OneWireManager::search()
 		int errCnt = 0;
 		while (true) {
 			SearchReturn ret = _busses[i]->search();
-			if (ret.err && ret.err != OneWireErrorLastDevice &&
+			if (ret.err && ret.err != OneWireNoMoreDevices &&
 					ret.err != OneWireErrorNoDevice) {
-				char *errS = OneWireErrorString(ret.err);
+				const char *errS = OneWireErrorString(ret.err);
 				Serial.printf("Search returned an error: %s\n", errS);
 
 				// keep track of error counts
@@ -109,7 +82,7 @@ bool OneWireManager::search()
 				found[index] = true;
 			}
 
-			if (ret.err == OneWireErrorLastDevice) {
+			if (ret.err == OneWireNoMoreDevices) {
 				break;
 			}
 		};
@@ -132,4 +105,54 @@ bool OneWireManager::search()
 OneWireErrorCounts OneWireManager::getErrors()
 {
 	return _errorCounts;
+}
+
+int OneWireManager::read(Sample *sample)
+{
+	int ret = 0;
+
+	if (_readIndex >= _devices.size()) {
+		_readIndex = 0;
+		return OneWireNoMoreData;
+	}
+
+	OneWireDevice *d = &_devices[_readIndex];
+
+	if (!d->initialized) {
+		ret = _initDevice(d);
+		if (ret == OneWireErrorUnsupported) {
+			Serial.printf("init not supported for: %s\n", d->string().c_str());
+			d->initialized = true;
+		} else if (ret) {
+			Serial.printf("init error %s for: %s\n",
+					OneWireErrorString(ret),
+					d->string().c_str());
+		} else {
+			d->initialized = true;
+		}
+	}
+
+	if (d->initialized) {
+		uint8_t family = d->family();
+
+		switch (family) {
+			case OneWireFamTemp:
+				{
+					Ds18b20 s = Ds18b20(_busses[d->busIndex], d->id);
+					ret = s.read(sample);
+					break;
+				}
+			case OneWireFamAD:
+				ret = OneWireErrorUnsupported;
+				break;
+			default:
+				Serial.printf("Unknown one wire fam code: 0x%X\n", family);
+				ret = OneWireErrorUnsupported;
+		}
+	}
+
+	_readIndex++;
+	_errorCounts.error(ret);
+
+	return ret;
 }

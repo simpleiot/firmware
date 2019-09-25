@@ -1,35 +1,36 @@
+#ifndef ONEWIREMANAGER_H
+#define ONEWIREMANAGER_H
+
 #include <Particle.h>
 #include <inttypes.h>
 #include <vector>
 
-#include "OneWireBus.h"
 #include "OneWireDevice.h"
-
-class OneWireErrorCounts
-{
-	public:
-	int shortDetected;
-	int timeout;
-	int deviceDisappeared;
-	int crc;
-	int i2c;
-
-	OneWireErrorCounts();
-	void error(int error);
-	String string();
-};
+#include "OneWireBus.h"
+#include "Sample.h"
 
 class OneWireManager
 {
+	// internal state
+	int _readIndex;
 	std::vector<OneWireDevice> _devices;
 	std::vector<OneWireBus*> _busses;
 	OneWireErrorCounts _errorCounts;
 
 	int _findDevice(OneWireDevice d);
+	int _initDevice(OneWireDevice *d);
 
 	public:
 	OneWireManager();
 	void addBus(OneWireBus *bus);
 	bool search();
+
+	/* read is used to read data from devices on the one wire bus. This
+	 * function should be called continually until it returns OneWireLastData,
+	 * at that point you'll know you reached the end of the list of devices.
+	 */
+	int read(Sample *sample);
 	OneWireErrorCounts getErrors();
 };
+
+#endif

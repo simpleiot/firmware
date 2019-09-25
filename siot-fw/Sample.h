@@ -1,7 +1,14 @@
+#ifndef SAMPLE_H
+#define SAMPLE_H
+
 #include <Particle.h>
 
-typedef struct {
+class Sample
+{
+	public:
 	float value;
 	String id;
 	String type;
-} Sample;
+};
+
+#endif

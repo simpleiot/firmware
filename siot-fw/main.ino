@@ -40,6 +40,9 @@ void setup() {
 
 	Wire.setSpeed(CLOCK_SPEED_400KHZ);
 	Wire.begin();
+
+
+	oneWireManager.search();
 }
 
 struct sample {
@@ -83,10 +86,28 @@ void loop() {
 	if (currentMillis - lastUpdate >= UPDATE_INTERVAL) {
 		lastUpdate = currentMillis;
 
-		oneWireManager.search();
 
+		int ret;
+		for (int i=0; ; i++) {
+			Sample sample;
+			ret = oneWireManager.read(&sample);
+			if (ret == OneWireNoMoreData) {
+				// at end of list
+				break;
+			} else if (!ret) {
+				// TODO process data from devices
+			}
+			if (i >= 100) {
+				Serial.println("Warning, read loop is not terminating properly");
+				break;
+			}
+		}
+
+
+		/*
 		Serial.printf("One wire errors:\n%s",
 				oneWireManager.getErrors().string().c_str());
+		*/
 
 		if (currentMillis - lastPublish >= PUBLISH_INTERVAL) {
 			lastPublish = currentMillis;

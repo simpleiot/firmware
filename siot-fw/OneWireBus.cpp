@@ -37,40 +37,14 @@ const uint8_t statusSBR = (1<<5); // single bit result
 const uint8_t statusTSB = (1<<6); // logic level of 2nd bit of 1-wire triplet command
 const uint8_t statusDIR = (1<<7); // search direction that was taken by 3rd bit of 1-wire triplet
 
-char * OneWireErrorString(int err)
-{
-	switch (err) {
-		case OneWireErrorNoDevice:
-			return "no device";
-			break;
-		case OneWireErrorShortDetected:
-			return "short detected";
-			break;
-		case OneWireErrorTimeout:
-			return "timeout";
-			break;
-		case OneWireErrorDevicesDisappeared:
-			return "device disappeared";
-			break;
-		case OneWireErrorCrc:
-			return "crc";
-			break;
-		case OneWireErrorI2C:
-			return "i2c";
-			break;
-		case OneWireErrorLastDevice:
-			return "no more devices";
-			break;
-		default:
-			return "unknown";
-	}
-}
-
 int OneWireBus::_reset()
 {
+	digitalWrite(_selectPin, HIGH);
 	Wire.beginTransmission(_i2cAddress);
 	Wire.write(cmd1WReset);
 	Wire.endTransmission();
+	digitalWrite(_selectPin, LOW);
+
 	WaitReturn waitRet = OneWireBus::_waitIdle();
 
 	if (waitRet.err) {
@@ -93,7 +67,8 @@ WaitReturn OneWireBus::_waitIdle()
 {
 	WaitReturn ret = {0,0};
 
-	for (int i=0; i<10; i++) {
+	digitalWrite(_selectPin, HIGH);
+	for (int i=0; i<30; i++) {
 		delayMicroseconds(100);
 		int cnt = Wire.requestFrom(_i2cAddress, 1);
 		if (cnt <= 0) {
@@ -101,9 +76,12 @@ WaitReturn OneWireBus::_waitIdle()
 		}
 		ret.status = Wire.read();
 		if ((ret.status & status1WB) == 0) {
+			digitalWrite(_selectPin, LOW);
 			return ret;
 		}
 	}
+
+	digitalWrite(_selectPin, LOW);
 
 	ret.err = OneWireErrorTimeout;
 	return ret;
@@ -114,9 +92,6 @@ WaitReturn OneWireBus::_waitIdle()
 SearchReturn OneWireBus::search()
 {
 	SearchReturn ret = {0,0};
-
-	digitalWrite(_selectPin, HIGH);
-	digitalWrite(PIN_BLACK, HIGH);
 
 	int discrepancy = -1;
 	uint64_t device = 0;
@@ -144,9 +119,7 @@ SearchReturn OneWireBus::search()
 		}
 
 		// Perform triplet operation
-		digitalWrite(PIN_GREEN, HIGH);
 		TripletReturn tripRet = _searchTriplet(dir);
-		digitalWrite(PIN_GREEN, LOW);
 
 		if (tripRet.err) {
 			ret.err = tripRet.err;
@@ -178,16 +151,13 @@ SearchReturn OneWireBus::search()
 	_searchLastDevice = device;
 	_searchLastDiscrepency = discrepancy;
 	if (_searchLastDiscrepency == -1) {
-		ret.err = OneWireErrorLastDevice;
+		ret.err = OneWireNoMoreDevices;
 		_searchLastDevice = 0;
 		goto search_done;
 	}
 
 search_error:
 search_done:
-	digitalWrite(_selectPin, LOW);
-	digitalWrite(PIN_BLACK, LOW);
-	digitalWrite(PIN_GREEN, LOW);
 	return ret;
 }
 
@@ -196,15 +166,18 @@ int OneWireBus::tx(uint8_t *w, int wCnt, uint8_t *r, int rSize)
 	int err = _reset();
 
 	if (err) {
+		Serial.println("CLIFF: reset returned error");
 		return err;
 	}
 
+	// send bytes onto 1-wire bus
 	for (int i=0; i<wCnt; i++) {
-		// send bytes onto 1-wire bus
+		digitalWrite(_selectPin, HIGH);
 		Wire.beginTransmission(_i2cAddress);
 		Wire.write(cmd1WWrite);
 		Wire.write(w[i]);
 		err = Wire.endTransmission();
+		digitalWrite(_selectPin, LOW);
 
 		if (err != 0) {
 			err = OneWireErrorI2C;
@@ -212,8 +185,13 @@ int OneWireBus::tx(uint8_t *w, int wCnt, uint8_t *r, int rSize)
 
 		WaitReturn waitRet = _waitIdle();
 		if (waitRet.err) {
+			Serial.println("CLIFF: wait returned error");
 			return waitRet.err;
 		}
+	}
+
+	// read bytes from 1-wire bus
+	for (int i=0; i<rSize; i++) {
 	}
 
 	return err;
@@ -229,10 +207,12 @@ TripletReturn OneWireBus::_searchTriplet(uint8_t direction)
 
 	TripletReturn ret;
 
+	digitalWrite(_selectPin, HIGH);
 	Wire.beginTransmission(_i2cAddress);
 	Wire.write(cmd1WTriplet);
 	Wire.write(dir);
 	int err = Wire.endTransmission();
+	digitalWrite(_selectPin, LOW);
 
 	if (err != 0) {
 		ret.err = OneWireErrorI2C;
