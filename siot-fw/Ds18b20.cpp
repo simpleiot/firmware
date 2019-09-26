@@ -51,7 +51,6 @@ int Ds18b20::_setResolution()
 		Serial.printf("%02x ", spad[i]);
 	}
 	Serial.println("");
-
 }
 
 

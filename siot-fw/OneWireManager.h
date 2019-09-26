@@ -23,6 +23,7 @@ class OneWireManager
 	public:
 	OneWireManager();
 	void addBus(OneWireBus *bus);
+	int init();
 	bool search();
 
 	/* read is used to read data from devices on the one wire bus. This

@@ -87,6 +87,21 @@ WaitReturn OneWireBus::_waitIdle()
 }
 
 
+int OneWireBus::init()
+{
+	Serial.printf("Initializing 1-wire bus: %s\n", _name);
+	select(true);
+	uint8_t buf[] = {cmdAdjPort,
+		0x00 + 0xf,
+		0x20 + 0xf,
+		0x40 + 0xf,
+		0x60 + 0xf,
+		0x80 + 0xf,
+	};
+	int err = i2cTx(buf, sizeof(buf), NULL, 0);
+	select(false);
+	return err;
+}
 
 SearchReturn OneWireBus::search()
 {

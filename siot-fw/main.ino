@@ -42,6 +42,11 @@ void setup() {
 	Wire.begin();
 
 
+	int err = oneWireManager.init();
+	if (err) {
+		Serial.printf("Error initializing one wire manager: %s\n",
+				OneWireErrorString(err));
+	}
 	oneWireManager.search();
 }
 

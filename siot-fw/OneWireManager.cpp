@@ -12,6 +12,20 @@ void OneWireManager::addBus(OneWireBus *bus)
 	_busses.push_back(bus);
 }
 
+
+int OneWireManager::init()
+{
+	int err = 0;
+	for (unsigned int i=0; i < _busses.size(); i++) {
+		int e = _busses[i]->init();
+		if (e) {
+			err = e;
+		}
+	}
+
+	return err;
+}
+
 // returns index if device found, otherwise -1
 int OneWireManager::_findDevice(OneWireDevice d)
 {
