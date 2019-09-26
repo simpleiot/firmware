@@ -48,7 +48,6 @@ void setup() {
 		Serial.printf("Error initializing one wire manager: %s\n",
 				OneWireErrorString(err));
 	}
-	oneWireManager.search();
 }
 
 struct sample {
@@ -92,6 +91,7 @@ void loop() {
 	if (currentMillis - lastUpdate >= UPDATE_INTERVAL) {
 		lastUpdate = currentMillis;
 
+		oneWireManager.search();
 
 		int ret;
 		for (int i=0; ; i++) {
