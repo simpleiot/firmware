@@ -55,7 +55,11 @@ class OneWireBus
 	// found. After it hits the last devices, the search is reset internally.
 	SearchReturn search();
 	const char* getName();
-	int tx(uint8_t *w, int wCnt, uint8_t *r, int rSize);
+	int tx(uint8_t *w, unsigned int wCnt, uint8_t *r, unsigned int rCnt);
+	int txMatch(uint64_t id, uint8_t *w, unsigned int wCnt, uint8_t *r, unsigned int rCnt);
+	int i2cTx(uint8_t *w, unsigned int wCnt, uint8_t *r, unsigned int rCnt);
+	void select(bool enable);
+	int matchRom(uint64_t id);
 };
 
 #endif

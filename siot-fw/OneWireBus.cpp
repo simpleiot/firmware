@@ -22,6 +22,7 @@ const uint8_t cmd1WBit       = 0x87; // perform a single-bit transaction on the 
 const uint8_t cmd1WWrite     = 0xa5; // perform a byte write on the 1-wire bus
 const uint8_t cmd1WRead      = 0x96; // perform a byte read on the 1-wire bus
 const uint8_t cmd1WTriplet   = 0x78; // perform a triplet operation (2 bit reads, a bit write)
+const uint8_t cmd1WMatchRom  = 0x55; // used to select a device
 
 const uint8_t regDCR    = 0xc3; // read ptr for device configuration register
 const uint8_t regStatus = 0xf0; // read ptr for status register
@@ -39,11 +40,12 @@ const uint8_t statusDIR = (1<<7); // search direction that was taken by 3rd bit 
 
 int OneWireBus::_reset()
 {
-	digitalWrite(_selectPin, HIGH);
-	Wire.beginTransmission(_i2cAddress);
-	Wire.write(cmd1WReset);
-	Wire.endTransmission();
-	digitalWrite(_selectPin, LOW);
+	uint8_t i2cData[] = {cmd1WReset};
+	int err = i2cTx(i2cData, sizeof(i2cData), NULL, 0);
+
+	if (err) {
+		return err;
+	}
 
 	WaitReturn waitRet = OneWireBus::_waitIdle();
 
@@ -67,21 +69,18 @@ WaitReturn OneWireBus::_waitIdle()
 {
 	WaitReturn ret = {0,0};
 
-	digitalWrite(_selectPin, HIGH);
 	for (int i=0; i<30; i++) {
 		delayMicroseconds(100);
-		int cnt = Wire.requestFrom(_i2cAddress, 1);
-		if (cnt <= 0) {
+		ret.err = i2cTx(NULL, 0, &ret.status, 1);
+		if (ret.err) {
+			//return ret;
 			continue;
 		}
-		ret.status = Wire.read();
+
 		if ((ret.status & status1WB) == 0) {
-			digitalWrite(_selectPin, LOW);
 			return ret;
 		}
 	}
-
-	digitalWrite(_selectPin, LOW);
 
 	ret.err = OneWireErrorTimeout;
 	return ret;
@@ -91,6 +90,8 @@ WaitReturn OneWireBus::_waitIdle()
 
 SearchReturn OneWireBus::search()
 {
+	select(true);
+
 	SearchReturn ret = {0,0};
 
 	int discrepancy = -1;
@@ -158,42 +159,121 @@ SearchReturn OneWireBus::search()
 
 search_error:
 search_done:
+	select(false);
 	return ret;
 }
 
-int OneWireBus::tx(uint8_t *w, int wCnt, uint8_t *r, int rSize)
+
+int OneWireBus::i2cTx(uint8_t *w, unsigned int wCnt, uint8_t *r, unsigned int rCnt)
+{
+	int err = 0;
+
+	if (w && wCnt > 0) {
+		// send write data
+		Wire.beginTransmission(_i2cAddress);
+
+		for (unsigned int i=0; i<wCnt; i++) {
+			Wire.write(w[i]);
+		}
+
+		err = Wire.endTransmission();
+
+		if (err) {
+			Serial.printf("i2c tx error: %i\n", err);
+			err = OneWireErrorI2C;
+			goto i2ctx_done;
+		}
+	}
+
+	if (r && rCnt > 0) {
+		// read read data
+		unsigned int cnt = Wire.requestFrom(_i2cAddress, rCnt);
+		if (cnt != rCnt) {
+			err = OneWireErrorI2C;
+			goto i2ctx_done;
+		}
+
+		for (unsigned int i=0; i < rCnt; i++) {
+			r[i] = Wire.read();
+		}
+	}
+
+	err = 0;
+
+i2ctx_done:
+	return err;
+}
+
+int OneWireBus::txMatch(uint64_t id, uint8_t *w, unsigned int wCnt, uint8_t *r, unsigned int rCnt)
+{
+	// assume we'll never transmit more than 32 bytes on the wirebus in a transaction
+	uint8_t txBuf[32] = {cmd1WMatchRom};
+
+	if (wCnt + 9 > sizeof(txBuf)) {
+		Serial.printf("Error, too much data for txMatch, 1st byte: 0x%x\n", w[0]);
+		return OneWireErrorUnsupported;
+	}
+
+	for (int i=0; i < 8; i++) {
+		txBuf[1+i] = uint8_t(id >> (i*8));
+	}
+
+	for (int i=0; i < wCnt; i++) {
+		txBuf[9+i] = w[i];
+	}
+
+	return tx(txBuf, wCnt + 9, r, rCnt);
+}
+
+int OneWireBus::tx(uint8_t *w, unsigned int wCnt, uint8_t *r, unsigned int rCnt)
 {
 	int err = _reset();
 
 	if (err) {
-		Serial.println("CLIFF: reset returned error");
 		return err;
 	}
 
 	// send bytes onto 1-wire bus
-	for (int i=0; i<wCnt; i++) {
-		digitalWrite(_selectPin, HIGH);
-		Wire.beginTransmission(_i2cAddress);
-		Wire.write(cmd1WWrite);
-		Wire.write(w[i]);
-		err = Wire.endTransmission();
-		digitalWrite(_selectPin, LOW);
+	for (unsigned int i=0; i<wCnt; i++) {
+		uint8_t i2cData[2] = {cmd1WWrite};
+		i2cData[1] = w[i];
+		err = i2cTx(i2cData, sizeof(i2cData), NULL, 0);
 
-		if (err != 0) {
-			err = OneWireErrorI2C;
+		if (err) {
+			goto tx_error;
 		}
 
 		WaitReturn waitRet = _waitIdle();
 		if (waitRet.err) {
-			Serial.println("CLIFF: wait returned error");
-			return waitRet.err;
+			err = waitRet.err;
+			goto tx_error;
 		}
 	}
 
 	// read bytes from 1-wire bus
-	for (int i=0; i<rSize; i++) {
+	for (unsigned int i=0; i<rCnt; i++) {
+		uint8_t i2cData[] = {cmd1WRead};
+		err = i2cTx(i2cData, sizeof(i2cData), NULL, 0);
+		if (err) {
+			goto tx_error;
+		}
+
+		WaitReturn waitRet = _waitIdle();
+		if (waitRet.err) {
+			err = waitRet.err;
+			goto tx_error;
+		}
+
+		uint8_t i2cData2[] = {cmdSetReadPtr, regRDR};
+		err = i2cTx(i2cData2, sizeof(i2cData2), &r[i], 1);
+		if (err) {
+			goto tx_error;
+		}
 	}
 
+	err = 0;
+
+tx_error:
 	return err;
 }
 
@@ -207,15 +287,11 @@ TripletReturn OneWireBus::_searchTriplet(uint8_t direction)
 
 	TripletReturn ret;
 
-	digitalWrite(_selectPin, HIGH);
-	Wire.beginTransmission(_i2cAddress);
-	Wire.write(cmd1WTriplet);
-	Wire.write(dir);
-	int err = Wire.endTransmission();
-	digitalWrite(_selectPin, LOW);
+	uint8_t i2cData[2] = {cmd1WTriplet};
+	i2cData[1] = dir;
+	int err = i2cTx(i2cData, sizeof(i2cData), NULL, 0);
 
-	if (err != 0) {
-		ret.err = OneWireErrorI2C;
+	if (err) {
 		return ret;
 	}
 
@@ -234,4 +310,13 @@ TripletReturn OneWireBus::_searchTriplet(uint8_t direction)
 const char * OneWireBus::getName()
 {
 	return _name;
+}
+
+void OneWireBus::select(bool enable)
+{
+	if (enable) {
+		digitalWrite(_selectPin, HIGH);
+	} else {
+		digitalWrite(_selectPin, LOW);
+	}
 }

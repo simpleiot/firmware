@@ -20,11 +20,13 @@ int Ds18b20::_readScratchpad(uint8_t *spad)
 
 	uint8_t cmd[] = {CMD_READ_SCRATCHPAD};
 
-	int ret = _bus->tx(cmd, sizeof(cmd), spadCrc, sizeof(spadCrc));
+	int ret = _bus->txMatch(_id, cmd, sizeof(cmd), spadCrc, sizeof(spadCrc));
 
 	if (ret) {
 		return ret;
 	}
+
+	Serial.println("");
 
 	if (!CheckCRC(spadCrc, sizeof(spadCrc))) {
 		return OneWireErrorCrc;
@@ -45,8 +47,8 @@ int Ds18b20::_setResolution()
 	}
 
 	Serial.print("scratchpad data: ");
-	for (int i=0; i<sizeof(spad); i++) {
-		Serial.printf("%08x", spad[i]);
+	for (unsigned int i=0; i<sizeof(spad); i++) {
+		Serial.printf("%02x ", spad[i]);
 	}
 	Serial.println("");
 
@@ -55,11 +57,16 @@ int Ds18b20::_setResolution()
 
 int Ds18b20::init()
 {
-	return _setResolution();
+	_bus->select(true);
+	int ret = _setResolution();
+	_bus->select(false);
+	return ret;
 }
 
 int Ds18b20::read(Sample *sample)
 {
+	_bus->select(true);
 	Serial.println("reading temp sensor");
+	_bus->select(false);
 	return 0;
 }

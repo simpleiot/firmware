@@ -12,6 +12,7 @@ class Ds18b20
 	// must pass in 8 byte array
 	int _readScratchpad(uint8_t *data);
 	int _setResolution();
+	int _selectDevice();
 
 	public:
 	Ds18b20(OneWireBus *bus, uint64_t id);
