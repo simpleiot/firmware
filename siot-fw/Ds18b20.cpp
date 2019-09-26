@@ -2,6 +2,7 @@
 
 #include "Ds18b20.h"
 #include "crc.h"
+#include "print.h"
 
 #define CMD_CONVERT 0x44
 #define CMD_WRITE_SCRATCHPAD 0x4E
@@ -26,8 +27,6 @@ int Ds18b20::_readScratchpad(uint8_t *spad)
 		return ret;
 	}
 
-	Serial.println("");
-
 	if (!CheckCRC(spadCrc, sizeof(spadCrc))) {
 		return OneWireErrorCrc;
 	}
@@ -45,12 +44,6 @@ int Ds18b20::_setResolution()
 	if (ret) {
 		return ret;
 	}
-
-	Serial.print("scratchpad data: ");
-	for (unsigned int i=0; i<sizeof(spad); i++) {
-		Serial.printf("%02x ", spad[i]);
-	}
-	Serial.println("");
 
 	if (spad[4] != 0x3f) {
 		Serial.println("setting resolution to 10 bits");
@@ -72,8 +65,31 @@ int Ds18b20::init()
 
 int Ds18b20::read(Sample *sample)
 {
+	int err = 0;
+	float temp;
 	_bus->select(true);
-	Serial.println("reading temp sensor");
+	uint8_t cmd[] = {CMD_CONVERT};
+	err = _bus->txMatch(_id, cmd, sizeof(cmd), NULL, 0);
+	if (err) {
+		goto read_done;
+	}
+	delay(200);
+
+	uint8_t spad[8];
+	err = _readScratchpad(spad);
+
+	if (err) {
+		goto read_done;
+	}
+
+	temp = int(spad[1]) << 8 | int(spad[0]);
+	temp = temp/16;
+
+	sample->id = formatU64Hex(_id);
+	sample->type = String("temp");
+	sample->value = temp;
+
+read_done:
 	_bus->select(false);
 	return 0;
 }

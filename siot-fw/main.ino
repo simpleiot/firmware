@@ -4,6 +4,7 @@
 #include "OneWireManager.h"
 #include "debug.h"
 #include "print.h"
+#include "Sample.h"
 
 #define PIN_1_WIRE_UPSTREAM_EN		D18
 #define PIN_1_WIRE_DOWNSTREAM_EN	D19
@@ -100,7 +101,7 @@ void loop() {
 				// at end of list
 				break;
 			} else if (!ret) {
-				// TODO process data from devices
+				Serial.printf("sample: %s\n", sample.string().c_str());
 			}
 			if (i >= 100) {
 				Serial.println("Warning, read loop is not terminating properly");

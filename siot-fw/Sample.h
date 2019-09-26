@@ -9,6 +9,8 @@ class Sample
 	float value;
 	String id;
 	String type;
+
+	String string();
 };
 
 #endif
