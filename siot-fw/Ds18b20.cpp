@@ -51,6 +51,14 @@ int Ds18b20::_setResolution()
 		Serial.printf("%02x ", spad[i]);
 	}
 	Serial.println("");
+
+	if (spad[4] != 0x3f) {
+		Serial.println("setting resolution to 10 bits");
+		uint8_t cmd[4] = {CMD_WRITE_SCRATCHPAD, 0xff, 0xff, 0x3f};
+		ret = _bus->txMatch(_id, cmd, sizeof(cmd), NULL, 0);
+	}
+
+	return ret;
 }
 
 
