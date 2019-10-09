@@ -100,6 +100,9 @@ void loop() {
 			if (ret == OneWireNoMoreData) {
 				// at end of list
 				break;
+			} else if (ret) {
+				Serial.printf("Warning: read error: %s\n",
+						OneWireErrorString(ret));
 			} else if (!ret) {
 				Serial.printf("sample: %s\n", sample.string().c_str());
 			}
