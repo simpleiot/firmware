@@ -1,5 +1,6 @@
 #include "OneWireManager.h"
 #include "Ds18b20.h"
+#include "Ds2438.h"
 #include "print.h"
 
 OneWireManager::OneWireManager():
@@ -46,6 +47,11 @@ int OneWireManager::_initDevice(OneWireDevice *d)
 		case OneWireFamTemp:
 			{
 				Ds18b20 s = Ds18b20(_busses[d->busIndex], d->id);
+				return s.init();
+			}
+		case OneWireFamAD:
+			{
+				Ds2438 s = Ds2438(_busses[d->busIndex], d->id);
 				return s.init();
 			}
 		default:
@@ -157,8 +163,11 @@ int OneWireManager::read(Sample *sample)
 					break;
 				}
 			case OneWireFamAD:
-				ret = OneWireErrorUnsupported;
-				break;
+				{
+					Ds2438 s = Ds2438(_busses[d->busIndex], d->id);
+					ret = s.read(sample);
+					break;
+				}
 			default:
 				Serial.printf("Unknown one wire fam code: 0x%X\n", family);
 				ret = OneWireErrorUnsupported;
