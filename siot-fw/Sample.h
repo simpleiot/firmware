@@ -2,6 +2,7 @@
 #define SAMPLE_H
 
 #include <Particle.h>
+#include <JsonParserGeneratorRK.h>
 
 class Sample
 {
@@ -11,6 +12,7 @@ class Sample
 	String type;
 
 	String string();
+	void toJSON(JsonWriter *jw);
 };
 
 #endif
