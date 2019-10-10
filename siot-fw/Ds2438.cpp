@@ -44,25 +44,24 @@ int Ds2438::read(Sample *sample)
 	float volts;
 	_bus->select(true);
 
-	uint8_t cmd[] = {CMD_CONVERT_VOLTAGE};
-	uint8_t cmd2[] = {CMD_RECALL_MEMORY_PAGE, 0};
+	// enable general purpose A/D and disable the rest of the stuff
+	// on the chip
+	uint8_t cmd3[] = {CMD_CONVERT_VOLTAGE};
+	uint8_t cmd4[] = {CMD_RECALL_MEMORY_PAGE, 0};
 
-	Serial.println("send convert voltage");
-	err = _bus->txMatch(_id, cmd, sizeof(cmd), NULL, 0);
+	err = _bus->txMatch(_id, cmd3, sizeof(cmd3), NULL, 0);
 	if (err) {
 		goto read_done;
 	}
 
-	delay(200);
+	delay(10);
 
-	Serial.println("send recall memory page");
-	err = _bus->txMatch(_id, cmd2, sizeof(cmd2), NULL, 0);
+	err = _bus->txMatch(_id, cmd4, sizeof(cmd4), NULL, 0);
 	if (err) {
 		goto read_done;
 	}
 
 	uint8_t spad[8];
-	Serial.println("read scratchpad");
 	err = _readScratchpad(spad);
 
 	if (err) {
@@ -70,8 +69,13 @@ int Ds2438::read(Sample *sample)
 	}
 
 	voltReg = uint16_t(spad[4]) << 8 | uint16_t(spad[3]);
-	Serial.printf("status/Config: 0x%x\n", spad[0]);
-	Serial.printf("voltReg: 0x%x\n", voltReg);
+
+	// A/D sometimes reads 0x3ff when no voltage is applied
+	if (voltReg == 0x3ff) {
+		voltReg = 0;
+	}
+
+	volts = voltReg * 0.01;
 
 	sample->id = formatU64Hex(_id);
 	sample->type = String("volt");
@@ -86,10 +90,10 @@ int Ds2438::init()
 {
 	int err = 0;
 	_bus->select(true);
-	uint8_t cmd[] = {CMD_WRITE_SCRATCHPAD, 0, 0};
-
 	// enable general purpose A/D and disable the rest of the stuff
 	// on the chip
+	uint8_t cmd[] = {CMD_WRITE_SCRATCHPAD, 0, 0x0};
+
 	uint8_t cmd2[] = {CMD_COPY_SCRATCHPAD, 0};
 	err = _bus->txMatch(_id, cmd, sizeof(cmd), NULL, 0);
 	if (err) {
