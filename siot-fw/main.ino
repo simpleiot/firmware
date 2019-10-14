@@ -52,7 +52,7 @@ void setup() {
 }
 
 const unsigned long UPDATE_INTERVAL = 3000;
-const unsigned long PUBLISH_INTERVAL = 60*1000;
+const unsigned long PUBLISH_INTERVAL = 10*1000;
 unsigned long lastUpdate = 0;
 unsigned long lastPublish = 0;
 

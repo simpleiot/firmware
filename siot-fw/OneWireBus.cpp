@@ -23,6 +23,9 @@ const uint8_t cmd1WWrite     = 0xa5; // perform a byte write on the 1-wire bus
 const uint8_t cmd1WRead      = 0x96; // perform a byte read on the 1-wire bus
 const uint8_t cmd1WTriplet   = 0x78; // perform a triplet operation (2 bit reads, a bit write)
 const uint8_t cmd1WMatchRom  = 0x55; // used to select a device
+const uint8_t cmd1WSearch    = 0xF0; // plain search
+const uint8_t cmd1WAlarmSearch = 0xEC; // only search for devices in alarm state
+
 
 const uint8_t regDCR    = 0xc3; // read ptr for device configuration register
 const uint8_t regStatus = 0xf0; // read ptr for status register
@@ -110,11 +113,10 @@ SearchReturn OneWireBus::search()
 	SearchReturn ret = {0,0};
 
 	int discrepancy = -1;
-	uint64_t device = 0;
 	uint8_t idBytes[8];
 
 	// issue a search command
-	uint8_t cmd[] = {cmdReset};
+	uint8_t cmd[] = {cmd1WSearch};
 
 	ret.err = tx(cmd, sizeof(cmd), NULL, 0);
 
@@ -123,6 +125,7 @@ SearchReturn OneWireBus::search()
 	}
 
 	for (int bit = 0; bit < 64; bit++) {
+		// by default, we take the 0 path if we have a discrepency
 		uint8_t dir = 0;
 		if (bit < _searchLastDiscrepency) {
 			// we haven't reached the last discrepancy yet, so we
@@ -147,6 +150,7 @@ SearchReturn OneWireBus::search()
 			goto search_error;
 		}
 
+
 		if (tripRet.GotZero && tripRet.GotOne && !tripRet.Taken) {
 			discrepancy = bit;
 		}
@@ -164,7 +168,7 @@ SearchReturn OneWireBus::search()
 		goto search_error;
 	}
 
-	_searchLastDevice = device;
+	_searchLastDevice = ret.device;
 	_searchLastDiscrepency = discrepancy;
 	if (_searchLastDiscrepency == -1) {
 		ret.err = OneWireNoMoreDevices;
