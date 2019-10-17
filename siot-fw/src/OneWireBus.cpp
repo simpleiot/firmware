@@ -4,7 +4,7 @@
 #include "debug.h"
 #include "print.h"
 
-OneWireBus::OneWireBus(char *name, int selectPin, int i2cAddress):
+OneWireBus::OneWireBus(const char *name, int selectPin, int i2cAddress):
 	_searchLastDiscrepency(-1),
 	_searchLastDevice(0),
 	_name(name),
@@ -237,7 +237,7 @@ int OneWireBus::txMatch(uint64_t id, uint8_t *w, unsigned int wCnt, uint8_t *r, 
 		txBuf[1+i] = uint8_t(id >> (i*8));
 	}
 
-	for (int i=0; i < wCnt; i++) {
+	for (unsigned int i=0; i < wCnt; i++) {
 		txBuf[9+i] = w[i];
 	}
 

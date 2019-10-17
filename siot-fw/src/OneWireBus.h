@@ -41,7 +41,7 @@ class OneWireBus
 	uint64_t _searchLastDevice;
 
 	// constructor params
-	char * _name;
+	const char * _name;
 	int _selectPin;
 	int _i2cAddress;
 
@@ -50,7 +50,7 @@ class OneWireBus
 	TripletReturn _searchTriplet(uint8_t direction);
 
 	public:
-	OneWireBus(char *name, int selectPin, int i2cAddress);
+	OneWireBus(const char *name, int selectPin, int i2cAddress);
 	// search is designed to be call repeatably and returns devices IDs
 	// found. After it hits the last devices, the search is reset internally.
 	SearchReturn search();

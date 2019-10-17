@@ -27,7 +27,7 @@ void setup() {
 	// delay a bit so the first println messages show up on console
 	delay(600);
 	Serial.println("Simple IoT Gateway");
-	Serial.println("FW v0.0.4");
+	Serial.println("FW v0.0.5");
 
 	// enable 1-wire drivers
 	pinMode(PIN_1_WIRE_DOWNSTREAM_EN, OUTPUT);
@@ -63,7 +63,9 @@ void loop() {
 		bool publish = false;
 		lastUpdate = currentMillis;
 
+		unsigned long start = millis();
 		oneWireManager.search();
+		Serial.printf("search took %i ms\n", millis() - start);
 
 		if ((!lastPublish || currentMillis - lastPublish >= PUBLISH_INTERVAL) &&
 		 	Particle.connected()) {
@@ -75,7 +77,9 @@ void loop() {
 		int ret;
 		for (int i=0; ; i++) {
 			Sample sample;
+			start = millis();
 			ret = oneWireManager.read(&sample);
+			Serial.printf("read took %i ms\n", millis() - start);
 			if (ret == OneWireNoMoreData) {
 				// at end of list
 				break;
@@ -93,8 +97,10 @@ void loop() {
 					}
 
 					Serial.printf("publishing %s\n", jw.getBuffer());
+					start = millis();
 					Particle.publish("sample", jw.getBuffer(),
 							PRIVATE);
+					Serial.printf("publish took %i ms\n", millis() - start);
 				}
 			}
 			if (i >= 100) {

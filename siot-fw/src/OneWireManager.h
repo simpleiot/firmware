@@ -12,7 +12,7 @@
 class OneWireManager
 {
 	// internal state
-	int _readIndex;
+	unsigned int _readIndex;
 	std::vector<OneWireDevice> _devices;
 	std::vector<OneWireBus*> _busses;
 	OneWireErrorCounts _errorCounts;
