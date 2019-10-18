@@ -14,5 +14,8 @@ flash: firmware.bin
 console:
 	particle serial monitor --follow
 
+format:
+	find -iname *.h -o -iname *.cpp | xargs clang-format -i
+
 clean:
 	rm firmware.bin

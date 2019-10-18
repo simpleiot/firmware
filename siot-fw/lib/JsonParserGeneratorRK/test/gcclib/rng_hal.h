@@ -47,4 +47,4 @@ uint32_t HAL_RNG_GetRandomNumber(void);
 }
 #endif
 
-#endif  /* __RNG_HAL_H */
+#endif /* __RNG_HAL_H */

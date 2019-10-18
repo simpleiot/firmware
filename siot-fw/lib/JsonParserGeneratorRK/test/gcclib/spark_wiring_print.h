@@ -28,11 +28,11 @@
 #define __SPARK_WIRING_PRINT_
 
 #include <stddef.h>
-#include <string.h>
 #include <stdint.h> // for uint8_t
+#include <string.h>
 
-#include "spark_wiring_string.h"
 #include "spark_wiring_printable.h"
+#include "spark_wiring_string.h"
 
 const unsigned char DEC = 10;
 const unsigned char HEX = 16;
@@ -41,29 +41,34 @@ const unsigned char BIN = 2;
 
 class String;
 
-class Print
-{
-  private:
+class Print {
+private:
     int write_error;
     size_t printNumber(unsigned long, uint8_t);
     size_t printFloat(double, uint8_t);
-  protected:
+
+protected:
     void setWriteError(int err = 1) { write_error = err; }
     size_t printf_impl(bool newline, const char* format, ...);
 
-  public:
-    Print() : write_error(0) {}
+public:
+    Print()
+        : write_error(0)
+    {
+    }
     virtual ~Print() {}
 
     int getWriteError() { return write_error; }
     void clearWriteError() { setWriteError(0); }
 
     virtual size_t write(uint8_t) = 0;
-    size_t write(const char *str) {
-      if (str == NULL) return 0;
-      return write((const uint8_t *)str, strlen(str));
+    size_t write(const char* str)
+    {
+        if (str == NULL)
+            return 0;
+        return write((const uint8_t*)str, strlen(str));
     }
-    virtual size_t write(const uint8_t *buffer, size_t size);
+    virtual size_t write(const uint8_t* buffer, size_t size);
 
     size_t print(const char[]);
     size_t print(char);
@@ -97,7 +102,6 @@ class Print
     {
         return this->printf_impl(true, format, args...);
     }
-
 };
 
 #endif

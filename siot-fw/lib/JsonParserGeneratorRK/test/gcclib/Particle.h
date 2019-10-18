@@ -9,13 +9,13 @@
 
 #include <cassert>
 
-#include "spark_wiring_string.h"
 #include "rng_hal.h"
+#include "spark_wiring_string.h"
 
 class Stream {
 public:
-	inline int available() { return 0; }
-	inline int read() { return 0; }
+    inline int available() { return 0; }
+    inline int read() { return 0; }
 };
 
 #endif /* __PARTICLE_H */

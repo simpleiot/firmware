@@ -32,22 +32,21 @@
 class Print;
 
 /**
- * @brief The Printable class provides a way for new classes to allow themselves to be printed.
+ * @brief The Printable class provides a way for new classes to allow themselves
+ * to be printed.
  *
- *  By deriving from Printable and implementing the printTo method, it will then be possible
- *  for users to print out instances of this class by passing them into the usual
- *  Print::print and Print::println methods.
-*/
-class Printable
-{
-  public:
-	/**
-	 * @brief Print a textual representation of the class to a Print object
-	 *
-	 * @param p The Print object to print to
-	 */
+ *  By deriving from Printable and implementing the printTo method, it will then
+ * be possible for users to print out instances of this class by passing them
+ * into the usual Print::print and Print::println methods.
+ */
+class Printable {
+public:
+    /**
+   * @brief Print a textual representation of the class to a Print object
+   *
+   * @param p The Print object to print to
+   */
     virtual size_t printTo(Print& p) const = 0;
 };
 
 #endif
-
