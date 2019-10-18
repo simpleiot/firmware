@@ -14,6 +14,11 @@
 
 #define I2C_1WIRE_ADDRESS 0x18
 
+#define VERSION 8
+
+PRODUCT_ID(10257);
+PRODUCT_VERSION(VERSION);
+
 SYSTEM_THREAD(ENABLED);
 SYSTEM_MODE(SEMI_AUTOMATIC);
 
@@ -27,7 +32,7 @@ void setup() {
 	// delay a bit so the first println messages show up on console
 	delay(600);
 	Serial.println("Simple IoT Gateway");
-	Serial.println("FW v0.0.5");
+	Serial.printf("FW v%i\n", VERSION);
 
 	// enable 1-wire drivers
 	pinMode(PIN_1_WIRE_DOWNSTREAM_EN, OUTPUT);
@@ -60,26 +65,20 @@ void loop() {
 	unsigned long currentMillis = millis();
 
 	if (currentMillis - lastUpdate >= UPDATE_INTERVAL) {
-		bool publish = false;
 		lastUpdate = currentMillis;
 
-		unsigned long start = millis();
 		oneWireManager.search();
-		Serial.printf("search took %i ms\n", millis() - start);
 
-		if ((!lastPublish || currentMillis - lastPublish >= PUBLISH_INTERVAL) &&
-		 	Particle.connected()) {
-			lastPublish = currentMillis;
-			publish = true;
-			Serial.println("publishing data to cloud");
-		}
-
+		// read samples
 		int ret;
+		int sampleCount = 0;
+		JsonWriterStatic<256> jw;
+		jw.startArray();
+
 		for (int i=0; ; i++) {
 			Sample sample;
-			start = millis();
+
 			ret = oneWireManager.read(&sample);
-			Serial.printf("read took %i ms\n", millis() - start);
 			if (ret == OneWireNoMoreData) {
 				// at end of list
 				break;
@@ -87,28 +86,28 @@ void loop() {
 				Serial.printf("Warning: read error: %s\n",
 						OneWireErrorString(ret));
 			} else if (!ret) {
+				sampleCount++;
 				Serial.printf("sample: %s\n", sample.string().c_str());
-
-				if (publish) {
-					JsonWriterStatic<256> jw;
-					{
-						JsonWriterAutoObject obj(&jw);
-						sample.toJSON(&jw);
-					}
-
-					Serial.printf("publishing %s\n", jw.getBuffer());
-					start = millis();
-					Particle.publish("sample", jw.getBuffer(),
-							PRIVATE);
-					Serial.printf("publish took %i ms\n", millis() - start);
-				}
+				jw.startObject();
+				sample.toJSON(&jw);
+				jw.finishObjectOrArray();
 			}
 			if (i >= 100) {
 				Serial.println("Warning, read loop is not terminating properly");
 				break;
 			}
+
 		}
 
+		jw.finishObjectOrArray();
+
+		if ((!lastPublish || currentMillis - lastPublish >= PUBLISH_INTERVAL) &&
+		 	Particle.connected() && sampleCount > 0) {
+				lastPublish = currentMillis;
+				Serial.printf("publishing %s\n", jw.getBuffer());
+				Particle.publish("sample", jw.getBuffer(),
+					PRIVATE);
+		}
 
 		/*
 		Serial.printf("One wire errors:\n%s",
