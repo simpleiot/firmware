@@ -58,8 +58,8 @@ void setup() {
 
 const unsigned long UPDATE_INTERVAL = 3000;
 const unsigned long PUBLISH_INTERVAL = 10*1000;
-unsigned long lastUpdate = 0;
-unsigned long lastPublish = 0;
+unsigned long lastUpdate = 0 - UPDATE_INTERVAL;
+unsigned long lastPublish = 0 - PUBLISH_INTERVAL;
 
 void loop() {
 	unsigned long currentMillis = millis();
@@ -92,6 +92,7 @@ void loop() {
 				sample.toJSON(&jw);
 				jw.finishObjectOrArray();
 			}
+
 			if (i >= 100) {
 				Serial.println("Warning, read loop is not terminating properly");
 				break;
@@ -101,7 +102,7 @@ void loop() {
 
 		jw.finishObjectOrArray();
 
-		if ((!lastPublish || currentMillis - lastPublish >= PUBLISH_INTERVAL) &&
+		if (currentMillis - lastPublish >= PUBLISH_INTERVAL &&
 		 	Particle.connected() && sampleCount > 0) {
 				lastPublish = currentMillis;
 				Serial.printf("publishing %s\n", jw.getBuffer());
