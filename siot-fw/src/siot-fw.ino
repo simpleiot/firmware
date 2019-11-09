@@ -28,7 +28,7 @@ OneWireBus oneWireDownstream = OneWireBus("downstream", PIN_1_WIRE_DOWNSTREAM_EN
 
 OneWireManager oneWireManager = OneWireManager();
 
-retained uint8_t publishQueueRetainedBuffer[2048];
+uint8_t publishQueueRetainedBuffer[2048];
 PublishQueueAsync publishQueue(publishQueueRetainedBuffer, sizeof(publishQueueRetainedBuffer));
 
 void setup()
@@ -100,8 +100,10 @@ void loop()
             } else if (!ret) {
                 Serial.printf("sample: %s\n", sample.string().c_str());
                 if (publish) {
+                    jw.startArray();
                     jw.startObject();
                     sample.toJSON(&jw);
+                    jw.finishObjectOrArray();
                     jw.finishObjectOrArray();
                     Serial.printf("publishing %s\n", jw.getBuffer());
                     publishQueue.publish("sample", jw.getBuffer(), PRIVATE, WITH_ACK);
