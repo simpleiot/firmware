@@ -12,6 +12,7 @@ enum OneWireError {
     OneWireErrorCrc = -5,
     OneWireErrorI2C = -6,
     OneWireErrorUnsupported = -7,
+    OneWireErrorWrite = -8,
 
     // stuff that is not really errors but indicate we are at the end
     // of a list
@@ -27,6 +28,7 @@ public:
     int crc;
     int i2c;
     int unsupported;
+    int write;
 
     OneWireErrorCounts();
     void error(int error);

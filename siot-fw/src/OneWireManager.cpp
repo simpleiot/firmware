@@ -1,5 +1,6 @@
 #include "OneWireManager.h"
 #include "Ds18b20.h"
+#include "Ds2413.h"
 #include "Ds2438.h"
 #include "print.h"
 
@@ -48,6 +49,10 @@ int OneWireManager::_initDevice(OneWireDevice* d)
     }
     case OneWireFamAD: {
         Ds2438 s = Ds2438(_busses[d->busIndex], d->id);
+        return s.init();
+    }
+    case OneWireFamGpio: {
+        Ds2413 s = Ds2413(_busses[d->busIndex], d->id);
         return s.init();
     }
     default:
@@ -121,6 +126,8 @@ OneWireErrorCounts OneWireManager::getErrors()
     return _errorCounts;
 }
 
+bool state = false;
+
 int OneWireManager::read(Sample* sample)
 {
     int ret = 0;
@@ -160,12 +167,24 @@ int OneWireManager::read(Sample* sample)
             ret = s.read(sample);
             break;
         }
+        case OneWireFamGpio: {
+            Ds2413 s = Ds2413(_busses[d->busIndex], d->id);
+            ret = s.read(sample);
+            if (ret) {
+                goto read_done;
+            }
+            state = !state;
+            Serial.printf("state: %i\n", state);
+            ret = s.write(state, state);
+            break;
+        }
         default:
             Serial.printf("Unknown one wire fam code: 0x%X\n", family);
             ret = OneWireErrorUnsupported;
         }
     }
 
+read_done:
     _readIndex++;
     _errorCounts.error(ret);
 

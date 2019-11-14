@@ -7,7 +7,8 @@
 
 enum OneWireFamCode {
     OneWireFamTemp = 0x28,
-    OneWireFamAD = 0x26
+    OneWireFamAD = 0x26,
+    OneWireFamGpio = 0x3A
 };
 
 class TripletReturn {

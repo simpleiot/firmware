@@ -24,6 +24,9 @@ const char* OneWireErrorString(int err)
     case OneWireErrorUnsupported:
         return "unsupported";
         break;
+    case OneWireErrorWrite:
+        return "write";
+        break;
 
     case OneWireNoMoreDevices:
         return "no more devices";
@@ -42,7 +45,7 @@ OneWireErrorCounts::OneWireErrorCounts()
     , deviceDisappeared(0)
     , crc(0)
     , i2c(0)
-    , unsupported(0)
+    , write(0)
 {
 }
 
@@ -69,6 +72,10 @@ void OneWireErrorCounts::error(int error)
     case OneWireErrorUnsupported:
         unsupported++;
         break;
+    case OneWireErrorWrite:
+        write++;
+        break;
+
     default:
         Serial.printf("Warning: OneWireErrorCounts, don't know how to handle: %i\n", error);
     }
