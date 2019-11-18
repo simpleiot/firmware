@@ -53,6 +53,13 @@ void configureBLE()
     BLE.advertise(&advData);
 }
 
+const unsigned long UPDATE_INTERVAL = 10000;
+unsigned long PUBLISH_INTERVAL = 20 * 1000;
+unsigned long lastUpdate = 0 - UPDATE_INTERVAL;
+unsigned long lastPublish = 0 - PUBLISH_INTERVAL;
+
+#define PUBLISH_INTERVAL_CELL 5 * 60 * 1000;
+
 void setup()
 {
     Serial.begin(115200);
@@ -60,6 +67,28 @@ void setup()
     delay(600);
     Serial.println("Simple IoT Gateway");
     Serial.printf("FW v%i\n", VERSION);
+
+    switch (PLATFORM_ID) {
+    case PLATFORM_ARGON:
+        Serial.println("Running on Argon");
+        break;
+    case PLATFORM_BORON:
+        Serial.println("Running on Boron");
+        PUBLISH_INTERVAL = PUBLISH_INTERVAL_CELL;
+        break;
+    case PLATFORM_XENON:
+        Serial.println("Running on Xenon");
+        break;
+    case PLATFORM_ELECTRON_PRODUCTION:
+        Serial.println("Running on Electron");
+        PUBLISH_INTERVAL = PUBLISH_INTERVAL_CELL;
+        break;
+    default:
+        Serial.printf("Unknown platform: %i\n", PLATFORM_ID);
+        break;
+    }
+
+    Serial.printf("Publish interval: %is\n", PUBLISH_INTERVAL / 1000);
 
     // enable 1-wire drivers
     pinMode(PIN_1_WIRE_DOWNSTREAM_EN, OUTPUT);
@@ -84,11 +113,6 @@ void setup()
 
     configureBLE();
 }
-
-const unsigned long UPDATE_INTERVAL = 5000;
-const unsigned long PUBLISH_INTERVAL = 10 * 1000;
-unsigned long lastUpdate = 0 - UPDATE_INTERVAL;
-unsigned long lastPublish = 0 - PUBLISH_INTERVAL;
 
 void loop()
 {
@@ -130,7 +154,7 @@ void loop()
                     jw.finishObjectOrArray();
                     jw.finishObjectOrArray();
                     Serial.printf("publishing %s\n", jw.getBuffer());
-                    publishQueue.publish("sample", jw.getBuffer(), PRIVATE, WITH_ACK);
+                    publishQueue.publish("sample", jw.getBuffer(), PRIVATE, NO_ACK);
                 }
             }
 
