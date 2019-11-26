@@ -32,26 +32,6 @@ OneWireManager oneWireManager = OneWireManager();
 uint8_t publishQueueRetainedBuffer[2048];
 PublishQueueAsync publishQueue(publishQueueRetainedBuffer, sizeof(publishQueueRetainedBuffer));
 
-String setSSID;
-
-static void onSetWifiSSID(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context)
-{
-    Serial.printf("set wifi SSID: %s\n", (char*)data);
-    setSSID = (char*)data;
-}
-
-static void onSetWifiPass(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context)
-{
-    Serial.printf("set wifi pass: %s\n", (char*)data);
-    if (PLATFORM_ID == PLATFORM_ARGON) {
-        if (!WiFi.setCredentials(setSSID.c_str(), (char*)data)) {
-            Serial.println("Failed to set Wifi credentials");
-        } else {
-            Serial.println("WiFi credentials set");
-        }
-    }
-}
-
 const BleUuid serviceUuid("5c1b9a0d-b5be-4a40-8f7a-66b36d0a5176");
 
 BleCharacteristic uptimeCharacteristic("uptime", BleCharacteristicProperty::NOTIFY, BleUuid("fdcf0000-3fed-4ed2-84e6-04bbb9ae04d4"), serviceUuid);
@@ -59,7 +39,54 @@ BleCharacteristic signalStrengthCharacteristic("strength", BleCharacteristicProp
 BleCharacteristic freeMemoryCharacteristic("freeMemory", BleCharacteristicProperty::NOTIFY, BleUuid("fdcf0002-3fed-4ed2-84e6-04bbb9ae04d4"), serviceUuid);
 BleCharacteristic modelCharacteristic("model", BleCharacteristicProperty::READ, BleUuid("fdcf0003-3fed-4ed2-84e6-04bbb9ae04d4"), serviceUuid);
 BleCharacteristic wifiSSIDCharacteristic("wifiSSID", BleCharacteristicProperty::READ, BleUuid("fdcf0004-3fed-4ed2-84e6-04bbb9ae04d4"), serviceUuid);
-BleCharacteristic connectedCharacteristic("connected", BleCharacteristicProperty::NOTIFY, BleUuid("fdcf0005-3fed-4ed2-84e6-04bbb9ae04d4"), serviceUuid);
+BleCharacteristic connectedCharacteristic("connected", BleCharacteristicProperty::NOTIFY | BleCharacteristicProperty::READ, BleUuid("fdcf0005-3fed-4ed2-84e6-04bbb9ae04d4"), serviceUuid);
+
+String setSSID;
+// it seems we can't reset the device in the function that sets the wifi cred, so set
+// a variable and reset next time around
+bool doReset = false;
+
+static void onSetWifiSSID(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context)
+{
+    char buf[100];
+    if (len > sizeof(buf)) {
+        Serial.println("ssid is too long");
+        return;
+    }
+
+    strncpy(buf, (char*)data, len);
+    buf[len] = 0;
+    Serial.printf("set wifi SSID: %s\n", buf);
+    setSSID = buf;
+}
+
+static void onSetWifiPass(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context)
+{
+    char buf[100];
+    if (len > sizeof(buf)) {
+        Serial.println("ssid is too long");
+        return;
+    }
+
+    strncpy(buf, (char*)data, len);
+    buf[len] = 0;
+    Serial.printf("set wifi pass: %s\n", buf);
+    if (PLATFORM_ID == PLATFORM_ARGON) {
+        WiFi.disconnect();
+        if (!WiFi.clearCredentials()) {
+            Serial.println("Failed to clear Wifi credentials");
+        }
+        if (!WiFi.setCredentials(setSSID.c_str(), buf)) {
+            Serial.println("Failed to set Wifi credentials");
+        } else {
+            Serial.println("WiFi credentials set");
+            wifiSSIDCharacteristic.setValue(setSSID);
+            Particle.connect();
+            //doReset = true;
+        }
+    }
+}
+
 BleCharacteristic setWifiSSIDCharacteristic("setWifiPass", BleCharacteristicProperty::WRITE_WO_RSP, BleUuid("fdcf0006-3fed-4ed2-84e6-04bbb9ae04d4"), serviceUuid, onSetWifiSSID, NULL);
 BleCharacteristic setWifiPassCharacteristic("setWifiPass", BleCharacteristicProperty::WRITE_WO_RSP, BleUuid("fdcf0007-3fed-4ed2-84e6-04bbb9ae04d4"), serviceUuid, onSetWifiPass, NULL);
 
@@ -81,6 +108,8 @@ void configureBLE()
 
     // Continuously advertise when not connected
     BLE.advertise(&advData);
+
+    connectedCharacteristic.setValue(Particle.connected());
 }
 
 const unsigned long UPDATE_INTERVAL = 10000;
@@ -157,6 +186,11 @@ bool connected = false;
 
 void loop()
 {
+    if (doReset) {
+
+        System.reset();
+    }
+
     unsigned long currentMillis = millis();
 
     if (currentMillis - lastUpdate >= UPDATE_INTERVAL) {
