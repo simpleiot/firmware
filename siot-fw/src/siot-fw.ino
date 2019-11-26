@@ -32,17 +32,47 @@ OneWireManager oneWireManager = OneWireManager();
 uint8_t publishQueueRetainedBuffer[2048];
 PublishQueueAsync publishQueue(publishQueueRetainedBuffer, sizeof(publishQueueRetainedBuffer));
 
+String setSSID;
+
+static void onSetWifiSSID(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context)
+{
+    Serial.printf("set wifi SSID: %s\n", (char*)data);
+    setSSID = (char*)data;
+}
+
+static void onSetWifiPass(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context)
+{
+    Serial.printf("set wifi pass: %s\n", (char*)data);
+    if (PLATFORM_ID == PLATFORM_ARGON) {
+        if (!WiFi.setCredentials(setSSID.c_str(), (char*)data)) {
+            Serial.println("Failed to set Wifi credentials");
+        } else {
+            Serial.println("WiFi credentials set");
+        }
+    }
+}
+
 const BleUuid serviceUuid("5c1b9a0d-b5be-4a40-8f7a-66b36d0a5176");
 
-BleCharacteristic uptimeCharacteristic("uptime", BleCharacteristicProperty::NOTIFY, BleUuid("fdcf4a3f-3fed-4ed2-84e6-04bbb9ae04d4"), serviceUuid);
-BleCharacteristic signalStrengthCharacteristic("strength", BleCharacteristicProperty::NOTIFY, BleUuid("cc97c20c-5822-4800-ade5-1f661d2133ee"), serviceUuid);
-BleCharacteristic freeMemoryCharacteristic("freeMemory", BleCharacteristicProperty::NOTIFY, BleUuid("d2b26bf3-9792-42fc-9e8a-41f6107df04c"), serviceUuid);
+BleCharacteristic uptimeCharacteristic("uptime", BleCharacteristicProperty::NOTIFY, BleUuid("fdcf0000-3fed-4ed2-84e6-04bbb9ae04d4"), serviceUuid);
+BleCharacteristic signalStrengthCharacteristic("strength", BleCharacteristicProperty::NOTIFY, BleUuid("fdcf0001-3fed-4ed2-84e6-04bbb9ae04d4"), serviceUuid);
+BleCharacteristic freeMemoryCharacteristic("freeMemory", BleCharacteristicProperty::NOTIFY, BleUuid("fdcf0002-3fed-4ed2-84e6-04bbb9ae04d4"), serviceUuid);
+BleCharacteristic modelCharacteristic("model", BleCharacteristicProperty::READ, BleUuid("fdcf0003-3fed-4ed2-84e6-04bbb9ae04d4"), serviceUuid);
+BleCharacteristic wifiSSIDCharacteristic("wifiSSID", BleCharacteristicProperty::READ, BleUuid("fdcf0004-3fed-4ed2-84e6-04bbb9ae04d4"), serviceUuid);
+BleCharacteristic connectedCharacteristic("connected", BleCharacteristicProperty::NOTIFY, BleUuid("fdcf0005-3fed-4ed2-84e6-04bbb9ae04d4"), serviceUuid);
+BleCharacteristic setWifiSSIDCharacteristic("setWifiPass", BleCharacteristicProperty::WRITE_WO_RSP, BleUuid("fdcf0006-3fed-4ed2-84e6-04bbb9ae04d4"), serviceUuid, onSetWifiSSID, NULL);
+BleCharacteristic setWifiPassCharacteristic("setWifiPass", BleCharacteristicProperty::WRITE_WO_RSP, BleUuid("fdcf0007-3fed-4ed2-84e6-04bbb9ae04d4"), serviceUuid, onSetWifiPass, NULL);
 
 void configureBLE()
 {
     BLE.addCharacteristic(uptimeCharacteristic);
     BLE.addCharacteristic(signalStrengthCharacteristic);
     BLE.addCharacteristic(freeMemoryCharacteristic);
+    BLE.addCharacteristic(modelCharacteristic);
+    BLE.addCharacteristic(connectedCharacteristic);
+    BLE.addCharacteristic(wifiSSIDCharacteristic);
+    BLE.addCharacteristic(setWifiSSIDCharacteristic);
+    BLE.addCharacteristic(setWifiPassCharacteristic);
 
     BleAdvertisingData advData;
 
@@ -68,16 +98,27 @@ void setup()
     Serial.println("Simple IoT Gateway");
     Serial.printf("FW v%i\n", VERSION);
 
+    configureBLE();
+
     switch (PLATFORM_ID) {
-    case PLATFORM_ARGON:
+    case PLATFORM_ARGON: {
         Serial.println("Running on Argon");
+        modelCharacteristic.setValue("Argon");
+        WiFiAccessPoint ap[1];
+        int found = WiFi.getCredentials(ap, 1);
+        if (found == 1) {
+            wifiSSIDCharacteristic.setValue(ap[0].ssid);
+        }
         break;
+    }
     case PLATFORM_BORON:
         Serial.println("Running on Boron");
         PUBLISH_INTERVAL = PUBLISH_INTERVAL_CELL;
+        modelCharacteristic.setValue("Boron");
         break;
     case PLATFORM_XENON:
         Serial.println("Running on Xenon");
+        modelCharacteristic.setValue("Xenon");
         break;
     case PLATFORM_ELECTRON_PRODUCTION:
         Serial.println("Running on Electron");
@@ -110,9 +151,9 @@ void setup()
     }
 
     Particle.connect();
-
-    configureBLE();
 }
+
+bool connected = false;
 
 void loop()
 {
@@ -120,12 +161,13 @@ void loop()
 
     if (currentMillis - lastUpdate >= UPDATE_INTERVAL) {
         lastUpdate = currentMillis;
+        bool conn = Particle.connected();
 
         oneWireManager.search();
 
         bool publish = false;
 
-        if (currentMillis - lastPublish >= PUBLISH_INTERVAL && Particle.connected()) {
+        if (currentMillis - lastPublish >= PUBLISH_INTERVAL && conn) {
             lastPublish = currentMillis;
             publish = true;
         }
@@ -175,6 +217,11 @@ void loop()
             int32_t totalRAM = DiagnosticsHelper::getValue(DIAG_ID_SYSTEM_TOTAL_RAM);
             int32_t freeMem = (totalRAM - usedRAM);
             freeMemoryCharacteristic.setValue(freeMem);
+
+            if (conn != connected) {
+                connected = conn;
+                connectedCharacteristic.setValue(conn);
+            }
         }
 
         /*
