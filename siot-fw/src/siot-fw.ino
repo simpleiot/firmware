@@ -42,9 +42,6 @@ BleCharacteristic wifiSSIDCharacteristic("wifiSSID", BleCharacteristicProperty::
 BleCharacteristic connectedCharacteristic("connected", BleCharacteristicProperty::NOTIFY | BleCharacteristicProperty::READ, BleUuid("fdcf0005-3fed-4ed2-84e6-04bbb9ae04d4"), serviceUuid);
 
 String setSSID;
-// it seems we can't reset the device in the function that sets the wifi cred, so set
-// a variable and reset next time around
-bool doReset = false;
 
 static void onSetWifiSSID(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context)
 {
@@ -81,14 +78,20 @@ static void onSetWifiPass(const uint8_t* data, size_t len, const BlePeerDevice& 
         } else {
             Serial.println("WiFi credentials set");
             wifiSSIDCharacteristic.setValue(setSSID);
+            // so far, the only way I can get new wifi settings to stick is reset the system
+            /*
+            WiFi.off();
+            WiFi.on();
             Particle.connect();
-            //doReset = true;
+            */
+            System.reset();
         }
     }
 }
 
 BleCharacteristic setWifiSSIDCharacteristic("setWifiPass", BleCharacteristicProperty::WRITE_WO_RSP, BleUuid("fdcf0006-3fed-4ed2-84e6-04bbb9ae04d4"), serviceUuid, onSetWifiSSID, NULL);
 BleCharacteristic setWifiPassCharacteristic("setWifiPass", BleCharacteristicProperty::WRITE_WO_RSP, BleUuid("fdcf0007-3fed-4ed2-84e6-04bbb9ae04d4"), serviceUuid, onSetWifiPass, NULL);
+BleCharacteristic deviceNameCharacteristic("deviceName", BleCharacteristicProperty::WRITE_WO_RSP | BleCharacteristicProperty::READ, BleUuid("fdcf0008-3fed-4ed2-84e6-04bbb9ae04d4"), serviceUuid, onSetWifiPass, NULL);
 
 void configureBLE()
 {
@@ -100,6 +103,7 @@ void configureBLE()
     BLE.addCharacteristic(wifiSSIDCharacteristic);
     BLE.addCharacteristic(setWifiSSIDCharacteristic);
     BLE.addCharacteristic(setWifiPassCharacteristic);
+    BLE.addCharacteristic(deviceNameCharacteristic);
 
     BleAdvertisingData advData;
 
@@ -119,6 +123,12 @@ unsigned long lastPublish = 0 - PUBLISH_INTERVAL;
 
 #define PUBLISH_INTERVAL_CELL 5 * 60 * 1000;
 
+void deviceNameHandler(const char* topic, const char* data)
+{
+    Serial.printf("device name received: %s\n", data);
+    deviceNameCharacteristic.setValue(data);
+}
+
 void setup()
 {
     Serial.begin(115200);
@@ -128,6 +138,10 @@ void setup()
     Serial.printf("FW v%i\n", VERSION);
 
     configureBLE();
+
+    // this does not work yet ...
+    Particle.subscribe("particle/device/name", deviceNameHandler, MY_DEVICES);
+    Particle.publish("particle/device/name", PRIVATE);
 
     switch (PLATFORM_ID) {
     case PLATFORM_ARGON: {
@@ -186,11 +200,6 @@ bool connected = false;
 
 void loop()
 {
-    if (doReset) {
-
-        System.reset();
-    }
-
     unsigned long currentMillis = millis();
 
     if (currentMillis - lastUpdate >= UPDATE_INTERVAL) {
