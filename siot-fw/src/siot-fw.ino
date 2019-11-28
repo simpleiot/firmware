@@ -5,6 +5,7 @@
 
 #include "OneWireManager.h"
 #include "Sample.h"
+#include "SiotTimer.h"
 #include "debug.h"
 #include "print.h"
 
@@ -28,6 +29,8 @@ OneWireBus oneWireUpstream = OneWireBus("upstream", PIN_1_WIRE_UPSTREAM_EN, I2C_
 OneWireBus oneWireDownstream = OneWireBus("downstream", PIN_1_WIRE_DOWNSTREAM_EN, I2C_1WIRE_ADDRESS);
 
 OneWireManager oneWireManager = OneWireManager();
+
+SiotTimer timer = SiotTimer(&oneWireManager);
 
 uint8_t publishQueueRetainedBuffer[2048];
 PublishQueueAsync publishQueue(publishQueueRetainedBuffer, sizeof(publishQueueRetainedBuffer));
@@ -59,6 +62,7 @@ static void onSetWifiSSID(const uint8_t* data, size_t len, const BlePeerDevice& 
 
 static void onSetWifiPass(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context)
 {
+#if Wiring_WiFi
     char buf[100];
     if (len > sizeof(buf)) {
         Serial.println("ssid is too long");
@@ -87,11 +91,58 @@ static void onSetWifiPass(const uint8_t* data, size_t len, const BlePeerDevice& 
             System.reset();
         }
     }
+#endif
+}
+
+extern BleCharacteristic timerFireDurationCharacteristic;
+extern BleCharacteristic timerFireTimeCharacteristic;
+
+static void onTimerFireDuration(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context)
+{
+    if (len < 4) {
+        Serial.printf("not enough data to fill int: %i\n", len);
+        return;
+    }
+
+    uint32_t timerDuration = *(uint32_t*)data;
+    timer.setFireDuration(timerDuration);
+    Serial.printf("timerDuration set to: %i\n", timerDuration);
+    timerFireDurationCharacteristic.setValue(inet_htonl(timerDuration));
+}
+
+static void onTimerFireTime(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context)
+{
+    if (len < 4) {
+        Serial.printf("not enough data to fill int: %i\n", len);
+        return;
+    }
+
+    uint32_t time = *(uint32_t*)data;
+    timer.setFireTime(time);
+    Serial.printf("timer fire time set to: %i\n", time);
+    timerFireTimeCharacteristic.setValue(inet_htonl(time));
+}
+
+static void onTimerFire(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context)
+{
+    Serial.printf("Timer fire\n");
+    timer.fire();
+}
+
+static void onSetTime(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context)
+{
+    uint32_t time = *(uint32_t*)data;
+    Serial.printf("set time: %i\n", time);
+    Time.setTime(time);
 }
 
 BleCharacteristic setWifiSSIDCharacteristic("setWifiPass", BleCharacteristicProperty::WRITE_WO_RSP, BleUuid("fdcf0006-3fed-4ed2-84e6-04bbb9ae04d4"), serviceUuid, onSetWifiSSID, NULL);
 BleCharacteristic setWifiPassCharacteristic("setWifiPass", BleCharacteristicProperty::WRITE_WO_RSP, BleUuid("fdcf0007-3fed-4ed2-84e6-04bbb9ae04d4"), serviceUuid, onSetWifiPass, NULL);
 BleCharacteristic deviceNameCharacteristic("deviceName", BleCharacteristicProperty::WRITE_WO_RSP | BleCharacteristicProperty::READ, BleUuid("fdcf0008-3fed-4ed2-84e6-04bbb9ae04d4"), serviceUuid, onSetWifiPass, NULL);
+BleCharacteristic timerFireDurationCharacteristic("timerFireDuration", BleCharacteristicProperty::WRITE_WO_RSP | BleCharacteristicProperty::READ, BleUuid("fdcf0009-3fed-4ed2-84e6-04bbb9ae04d4"), serviceUuid, onTimerFireDuration, NULL);
+BleCharacteristic timerFireCharacteristic("timerFire", BleCharacteristicProperty::WRITE_WO_RSP, BleUuid("fdcf000a-3fed-4ed2-84e6-04bbb9ae04d4"), serviceUuid, onTimerFire, NULL);
+BleCharacteristic currentTimeCharacteristic("currentTime", BleCharacteristicProperty::NOTIFY | BleCharacteristicProperty::WRITE_WO_RSP, BleUuid("fdcf000b-3fed-4ed2-84e6-04bbb9ae04d4"), serviceUuid, onSetTime, NULL);
+BleCharacteristic timerFireTimeCharacteristic("timerFireTime", BleCharacteristicProperty::WRITE_WO_RSP | BleCharacteristicProperty::READ, BleUuid("fdcf000c-3fed-4ed2-84e6-04bbb9ae04d4"), serviceUuid, onTimerFireTime, NULL);
 
 void configureBLE()
 {
@@ -104,6 +155,10 @@ void configureBLE()
     BLE.addCharacteristic(setWifiSSIDCharacteristic);
     BLE.addCharacteristic(setWifiPassCharacteristic);
     BLE.addCharacteristic(deviceNameCharacteristic);
+    BLE.addCharacteristic(timerFireDurationCharacteristic);
+    BLE.addCharacteristic(timerFireCharacteristic);
+    BLE.addCharacteristic(currentTimeCharacteristic);
+    BLE.addCharacteristic(timerFireTimeCharacteristic);
 
     BleAdvertisingData advData;
 
@@ -114,11 +169,17 @@ void configureBLE()
     BLE.advertise(&advData);
 
     connectedCharacteristic.setValue(Particle.connected());
+    timerFireDurationCharacteristic.setValue(0);
+    timerFireTimeCharacteristic.setValue(0);
+
+    currentTimeCharacteristic.setValue(Time.now());
 }
 
 const unsigned long UPDATE_INTERVAL = 10000;
+const unsigned long TIME_UPDATE_INTERVAL = 1000;
 unsigned long PUBLISH_INTERVAL = 20 * 1000;
 unsigned long lastUpdate = 0 - UPDATE_INTERVAL;
+unsigned long lastTimeUpdate = 0 - TIME_UPDATE_INTERVAL;
 unsigned long lastPublish = 0 - PUBLISH_INTERVAL;
 
 #define PUBLISH_INTERVAL_CELL 5 * 60 * 1000;
@@ -147,11 +208,13 @@ void setup()
     case PLATFORM_ARGON: {
         Serial.println("Running on Argon");
         modelCharacteristic.setValue("Argon");
+#if Wiring_WiFi
         WiFiAccessPoint ap[1];
         int found = WiFi.getCredentials(ap, 1);
         if (found == 1) {
             wifiSSIDCharacteristic.setValue(ap[0].ssid);
         }
+#endif
         break;
     }
     case PLATFORM_BORON:
@@ -201,6 +264,13 @@ bool connected = false;
 void loop()
 {
     unsigned long currentMillis = millis();
+
+    if (currentMillis - lastTimeUpdate >= TIME_UPDATE_INTERVAL) {
+        uint32_t now = inet_htonl(Time.now());
+        currentTimeCharacteristic.setValue(now);
+        lastTimeUpdate = currentMillis;
+        timer.run();
+    }
 
     if (currentMillis - lastUpdate >= UPDATE_INTERVAL) {
         lastUpdate = currentMillis;
@@ -259,7 +329,7 @@ void loop()
             int32_t usedRAM = DiagnosticsHelper::getValue(DIAG_ID_SYSTEM_USED_RAM);
             int32_t totalRAM = DiagnosticsHelper::getValue(DIAG_ID_SYSTEM_TOTAL_RAM);
             int32_t freeMem = (totalRAM - usedRAM);
-            freeMemoryCharacteristic.setValue(freeMem);
+            freeMemoryCharacteristic.setValue(inet_htonl(freeMem));
 
             if (conn != connected) {
                 connected = conn;

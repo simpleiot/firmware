@@ -126,6 +126,22 @@ OneWireErrorCounts OneWireManager::getErrors()
     return _errorCounts;
 }
 
+int OneWireManager::setGpio(bool gpio1, bool gpio2)
+{
+    for (unsigned int i = 0; i < _devices.size(); i++) {
+        OneWireDevice* d = &_devices[_readIndex];
+        if (d->family() == OneWireFamGpio) {
+            Ds2413 s = Ds2413(_busses[d->busIndex], d->id);
+            int ret = s.write(gpio1, gpio2);
+            if (ret) {
+                Serial.printf("error setting relay: %s", OneWireErrorString(ret));
+            }
+        }
+    }
+
+    return 0;
+}
+
 bool state = false;
 
 int OneWireManager::read(Sample* sample)
@@ -173,9 +189,12 @@ int OneWireManager::read(Sample* sample)
             if (ret) {
                 goto read_done;
             }
+            /*
+             * code that toggles the state of the relay
             state = !state;
             Serial.printf("state: %i\n", state);
             ret = s.write(state, state);
+            */
             break;
         }
         default:

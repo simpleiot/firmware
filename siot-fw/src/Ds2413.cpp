@@ -37,7 +37,7 @@ int Ds2413::write(bool pioA, bool pioB)
         err = OneWireErrorWrite;
     }
 
-    Serial.printf("ds2413: 0x%x\n", resp[0]);
+    //Serial.printf("ds2413: 0x%x\n", resp[0]);
 
 read_done:
     _bus->select(false);
@@ -56,7 +56,7 @@ int Ds2413::read(Sample* sample)
         goto read_done;
     }
 
-    Serial.printf("ds2413: 0x%x\n", resp[0]);
+    //Serial.printf("ds2413: 0x%x\n", resp[0]);
 
 read_done:
     _bus->select(false);

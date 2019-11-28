@@ -31,6 +31,7 @@ public:
 	 */
     int read(Sample* sample);
     OneWireErrorCounts getErrors();
+    int setGpio(bool, bool);
 };
 
 #endif
