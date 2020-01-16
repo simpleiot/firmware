@@ -71,7 +71,7 @@ bool OneWireManager::search()
             SearchReturn ret = _busses[i]->search();
             if (ret.err && ret.err != OneWireNoMoreDevices && ret.err != OneWireErrorNoDevice) {
                 const char* errS = OneWireErrorString(ret.err);
-                Serial.printf("Search returned an error: %s\n", errS);
+                Serial.printf("Search returned an error on bus %i: %s\n", i, errS);
 
                 // keep track of error counts
                 _errorCounts.error(ret.err);
