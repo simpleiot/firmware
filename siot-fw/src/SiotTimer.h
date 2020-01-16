@@ -3,6 +3,11 @@
 
 #include "OneWireManager.h"
 
+typedef enum {
+    TIMER_STATE_WAITING,
+    TIMER_STATE_FIRED
+} TimerState;
+
 class SiotTimer {
     OneWireManager* _oneWireManager;
     int _fireDuration;
@@ -10,6 +15,7 @@ class SiotTimer {
     int _lastMinutesToday;
     bool _firedToday;
     bool _running;
+    TimerState _state;
 
 public:
     SiotTimer(OneWireManager*);
