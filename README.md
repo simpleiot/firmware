@@ -6,3 +6,11 @@ real-world systems.
 
 This repository contains firmware -- currently for [Particle](https://www.particle.io/)
 devices.
+
+## Pull Requests Welcome
+
+This is a community project -- pull requests will be considered.
+
+## License
+
+Apache Version 2.0
