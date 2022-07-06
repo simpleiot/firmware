@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+message Point {
+  string type = 2;
+  float value = 4;
+  google.protobuf.Timestamp time = 5;
+  float index = 13;
+  string text = 8;
+  string key = 11;
+  int32 tombstone = 12;
+  bytes data = 14;
+}
+
+message Points {
+  repeated Point points = 1;
+}
