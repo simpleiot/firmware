@@ -1,3 +1,7 @@
+siot_setup() {
+  git submodule update --init
+}
+
 siot_protobuf_gen() {
   (cd library/pb && python ../../nanopb/generator/nanopb_generator.py ./*.proto)
 }
