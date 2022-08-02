@@ -3,7 +3,7 @@ siot_setup() {
 }
 
 siot_protobuf_gen() {
-  (cd library/pb && python ../../nanopb/generator/nanopb_generator.py ./*.proto)
+  (cd libraries/pb && python ../../nanopb/generator/nanopb_generator.py ./*.proto)
 }
 
 siot_ctags() {
