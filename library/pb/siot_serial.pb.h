@@ -11,8 +11,8 @@
 #endif
 
 /* Struct definitions */
-typedef struct _siot_Serial { 
-    pb_callback_t subject;
+typedef struct _siot_Serial {
+    char subject[63];
     pb_callback_t points;
 } siot_Serial;
 
@@ -22,8 +22,8 @@ extern "C" {
 #endif
 
 /* Initializer values for message structs */
-#define siot_Serial_init_default                 {{{NULL}, NULL}, {{NULL}, NULL}}
-#define siot_Serial_init_zero                    {{{NULL}, NULL}, {{NULL}, NULL}}
+#define siot_Serial_init_default                 {"", {{NULL}, NULL}}
+#define siot_Serial_init_zero                    {"", {{NULL}, NULL}}
 
 /* Field tags (for use in manual encoding/decoding) */
 #define siot_Serial_subject_tag                  1
@@ -31,7 +31,7 @@ extern "C" {
 
 /* Struct field encoding specification for nanopb */
 #define siot_Serial_FIELDLIST(X, a) \
-X(a, CALLBACK, SINGULAR, STRING,   subject,           1) \
+X(a, STATIC,   SINGULAR, STRING,   subject,           1) \
 X(a, CALLBACK, REPEATED, MESSAGE,  points,            2)
 #define siot_Serial_CALLBACK pb_default_field_callback
 #define siot_Serial_DEFAULT NULL
