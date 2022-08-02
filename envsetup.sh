@@ -3,5 +3,7 @@ siot_protobuf_gen() {
 }
 
 siot_build_siot_mcu_serial() {
-  (cd Arduino/SIOT_MCU_serial && arduino-cli compile --libraries ../../library -b arduino:avr:uno)
+  (cd Arduino/SIOT_MCU_serial && arduino-cli compile \
+    --libraries ../../libraries \
+    -b arduino:avr:uno)
 }
