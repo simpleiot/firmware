@@ -4,8 +4,10 @@ Simple IoT is collection of building blocks and best practices
 for building IoT applications, learned from experience building
 real-world systems.
 
-This repository contains firmware -- currently for [Particle](https://www.particle.io/)
-devices.
+## Projects
+
+- [Particle firmware](siot-fw) (not currently maintained)
+- [Arduino reference implementations)(Arduino)
 
 ## Pull Requests Welcome
 

@@ -3,7 +3,7 @@
 #include <pb_encode.h>
 #include <pb.h>
 
-#include "src/siot_serial.pb.h"
+#include <siot_serial.pb.h>
 
 //NOTE: maximum receive buffer length in Uno default serial ISR is 64 bytes.
 
@@ -24,21 +24,21 @@ void setup() {
   uint8_t buffer[256];
   bool status;
   int i;
-  
+
   siot_Serial message = siot_Serial_init_default;
-  
+
   // bind callback
   message.subject.funcs.encode = &write_string;
   message.subject.arg = welcome;
-  
+
   pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
 
   //load something into the message via a callback:
   //write_string(&stream, ????, &welcome);
   //punt for now and just assign defaults to the arg field in the message struct
-  
+
   status = pb_encode(&stream, siot_Serial_fields, &message);
-  
+
      if (status)
         {
             Serial.print("Number of bytes in stream: ");
@@ -47,7 +47,7 @@ void setup() {
             {
               Serial.print(buffer[i++], HEX);
             }
-            
+
             Serial.println();
         }
         else
@@ -63,10 +63,10 @@ void setup() {
 
  Serial.print("Status of decoding: ");
  Serial.println(status);
-            
+
  }
 
-// 
+//
 void loop() {
  ;
 }

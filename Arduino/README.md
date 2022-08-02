@@ -1,5 +1,14 @@
 # Simple IoT Arduino examples
 
+This directory contains reference implementations of Arduino firmware
+that can be connected to SIOT systems.
+
+- `siot_setup` (only run once)
+- `siot_protobuf_gen` (can be used to update generated protobuf files)
+- `siot_build_siot_mcu_serial` (build siot MCU example)
+
+## Legacy
+
 [JWS] 7/2/22
 
 This directory contains a small sketch that demonstrates that Google

@@ -11,11 +11,11 @@
 #endif
 
 /* Struct definitions */
-typedef struct _Points { 
+typedef struct _Points {
     pb_callback_t points;
 } Points;
 
-typedef struct _Point { 
+typedef struct _Point {
     pb_callback_t type;
     float value;
     bool has_time;

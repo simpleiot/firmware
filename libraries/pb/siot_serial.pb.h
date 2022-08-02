@@ -11,7 +11,7 @@
 #endif
 
 /* Struct definitions */
-typedef struct _siot_Serial { 
+typedef struct _siot_Serial {
     pb_callback_t subject;
     pb_callback_t points;
 } siot_Serial;
