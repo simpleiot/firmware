@@ -6,6 +6,10 @@
 #include <siot_serial.pb.h>
 #include <point.pb.h>
 
+#include <PacketSerial.h>
+
+PacketSerial cobsWrapper;
+
 // NOTE: maximum receive buffer length in Uno default serial ISR is 64 bytes.
 
 char welcome[] = "Our first SIOT message!";
@@ -34,6 +38,8 @@ void setup()
     uint8_t buffer[256];
     bool status;
     int i;
+
+    cobsWrapper.setStream(&Serial);
 
     inlet_temperature = 0.0;
     outlet_temperature = 12.0;
@@ -98,6 +104,81 @@ void setup()
 }
 //
 void loop()
+{
+    uint8_t buffer[256];
+    char print_string[250];
+    bool status;
+    int i;
+
+    delay(1000);
+
+    inlet_temperature = inlet_temperature + 5.0;
+
+    outlet_temperature = inlet_temperature + 5.0;
+
+    memset(buffer, 0x00, 256);
+
+    out_point.key.arg = key_in;
+    out_point.index = 0.0;
+
+    out_point.value = inlet_temperature;
+
+    pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
+
+    status = pb_encode(&stream, Point_fields, &out_point);
+
+    if (status)
+    {
+        cobsWrapper.send(buffer, stream.bytes_written + 1);
+        cobsWrapper.update();
+    }
+    else
+    {
+        Serial.println("Encoding failed");
+        return 1; /* Failure */
+    }
+
+    memset(buffer, 0x00, 256);
+    // try to decode the buffer:
+    pb_istream_t istream = pb_istream_from_buffer(buffer, stream.bytes_written);
+
+    status = pb_decode(&istream, Point_fields, &in_point);
+#if 1
+
+    memset(buffer, 0x00, 256);
+
+    out_point.key.arg = key_out;
+    out_point.index = 1.0;
+
+    out_point.value = outlet_temperature;
+    stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
+
+    status = pb_encode(&stream, Point_fields, &out_point);
+
+    if (status)
+    {
+        cobsWrapper.send(buffer, stream.bytes_written + 1);
+        cobsWrapper.update();
+    }
+    else
+    {
+        Serial.println("Encoding failed");
+        return 1; /* Failure */
+    }
+
+    memset(buffer, 0x00, 256);
+
+    // try to decode the buffer:
+    istream = pb_istream_from_buffer(buffer, stream.bytes_written);
+
+    status = pb_decode(&istream, Point_fields, &in_point);
+
+    // delay(10000);
+#endif
+}
+
+//
+void loop_no_cobs()
 {
     uint8_t buffer[256];
     char print_string[250];
