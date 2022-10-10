@@ -17,18 +17,15 @@ void setup() {
 }
 
 void loop() {
-  static const char msg[] = "Hi Cliff";
-  
   char cobsTest2Array[40];
-  
+
   memset(cobsTest2Array, 0x00, 40);
-  
+
   sprintf( cobsTest2Array, "Mini-ATS COBS Test Msg: %08d", msg_counter);
-  
+
   msg_counter++;
-		
-		
-  //cobsWrapper.send(msg, sizeof(msg));
+
+
   cobsWrapper.send(cobsTest2Array, 35);
   cobsWrapper.update();
   delay(1000);
