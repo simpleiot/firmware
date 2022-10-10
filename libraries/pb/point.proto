@@ -10,7 +10,6 @@ message Point {
   string text = 8;
   string key = 11;
   int32 tombstone = 12;
-  bytes data = 14;
 }
 
 message Points {

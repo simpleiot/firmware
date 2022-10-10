@@ -12,8 +12,9 @@
 
 /* Struct definitions */
 typedef struct _siot_Serial {
-    pb_callback_t subject;
-    pb_callback_t points;
+    char subject[63];
+    pb_size_t points_count;
+    Point points[5];
 } siot_Serial;
 
 
@@ -22,8 +23,8 @@ extern "C" {
 #endif
 
 /* Initializer values for message structs */
-#define siot_Serial_init_default                 {{{NULL}, NULL}, {{NULL}, NULL}}
-#define siot_Serial_init_zero                    {{{NULL}, NULL}, {{NULL}, NULL}}
+#define siot_Serial_init_default                 {"", 0, {Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default}}
+#define siot_Serial_init_zero                    {"", 0, {Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero}}
 
 /* Field tags (for use in manual encoding/decoding) */
 #define siot_Serial_subject_tag                  1
@@ -31,9 +32,9 @@ extern "C" {
 
 /* Struct field encoding specification for nanopb */
 #define siot_Serial_FIELDLIST(X, a) \
-X(a, CALLBACK, SINGULAR, STRING,   subject,           1) \
-X(a, CALLBACK, REPEATED, MESSAGE,  points,            2)
-#define siot_Serial_CALLBACK pb_default_field_callback
+X(a, STATIC,   SINGULAR, STRING,   subject,           1) \
+X(a, STATIC,   REPEATED, MESSAGE,  points,            2)
+#define siot_Serial_CALLBACK NULL
 #define siot_Serial_DEFAULT NULL
 #define siot_Serial_points_MSGTYPE Point
 
@@ -43,7 +44,7 @@ extern const pb_msgdesc_t siot_Serial_msg;
 #define siot_Serial_fields &siot_Serial_msg
 
 /* Maximum encoded size of messages (where known) */
-/* siot_Serial_size depends on runtime parameters */
+#define siot_Serial_size                         1264
 
 #ifdef __cplusplus
 } /* extern "C" */
