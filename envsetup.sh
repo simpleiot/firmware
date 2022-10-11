@@ -46,3 +46,16 @@ siot_upload_siot_mcu_cobs() {
       -b arduino:avr:uno \
       -p /dev/ttyACM0
 }
+
+siot_pb_test_run() {
+  (cd cmd/pb-test && gcc -I ../../libraries/pb \
+    -I ../../libraries/nanopb \
+    -o pb-test \
+    ../../libraries/nanopb/pb_common.c \
+    ../../libraries/nanopb/pb_encode.c \
+    ../../libraries/pb/point.pb.c \
+    ../../libraries/pb/timestamp.pb.c \
+    ../../libraries/pb/siot_serial.pb.c \
+    main.c &&
+    ./pb-test)
+}
