@@ -12,12 +12,12 @@
 
 /* Struct definitions */
 typedef struct _Point {
-    char type[63];
+    char type[25];
     float value;
     bool has_time;
     google_protobuf_Timestamp time;
-    char text[63];
-    char key[63];
+    char text[25];
+    char key[25];
     int32_t tombstone;
     float index;
 } Point;
@@ -75,8 +75,8 @@ extern const pb_msgdesc_t Points_msg;
 #define Points_fields &Points_msg
 
 /* Maximum encoded size of messages (where known) */
-#define Point_size                               237
-#define Points_size                              1200
+#define Point_size                               123
+#define Points_size                              625
 
 #ifdef __cplusplus
 } /* extern "C" */

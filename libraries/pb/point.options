@@ -1,5 +1,5 @@
-Point.type max_size:63
-Point.text max_size:63
-Point.key max_size:63
+Point.type max_size:25
+Point.text max_size:25
+Point.key max_size:25
 
 Points.points max_count:5
