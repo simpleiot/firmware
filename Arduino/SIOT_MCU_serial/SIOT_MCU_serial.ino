@@ -88,11 +88,11 @@ void loop()
 
     sprintf(buffer, "Loop %d", count);
     cobs_print(buffer);
+    delay(1000);
 
     count++;
 
-    siot_Serial msg;
-    memset(&msg, 0, sizeof(msg));
+    siot_Serial msg = siot_Serial_init_default;
     msg.points_count = 0;
     msg.points[0].has_time = true;
     strcpy(msg.points[0].type, "temp");
