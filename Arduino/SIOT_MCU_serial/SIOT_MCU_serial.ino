@@ -96,15 +96,24 @@ void loop()
     count++;
 
     siot_Serial msg = siot_Serial_init_default;
-    msg.points_count = 2;
+    msg.points_count = 3;
 
+    // has_time must be set to true, or we'll get a decode error at the other end
     msg.points[0].has_time = true;
     strcpy(msg.points[0].type, "temp");
+    strcpy(msg.points[0].key, "front");
     msg.points[0].value = 23.3;
+    msg.points[0].index = 0;
 
     msg.points[1].has_time = true;
-    strcpy(msg.points[1].type, "voltage");
-    msg.points[1].value = 277;
+    strcpy(msg.points[1].type, "temp");
+    strcpy(msg.points[1].key, "back");
+    msg.points[1].value = 19.4;
+    msg.points[1].index = 1;
+
+    msg.points[2].has_time = true;
+    strcpy(msg.points[2].type, "voltage");
+    msg.points[2].value = 277;
 
     if (!send_message(&msg)) {
         sprintf((char*)buffer, "Encoding failed");
