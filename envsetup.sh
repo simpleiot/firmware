@@ -1,12 +1,13 @@
 # mkr1000 appears to work with a SEEED XIAO SAMD21 board
 
 siot_mcu_board=arduino:samd:mkr1000
-siot_mcu_port=/dev/ttyACM1
+siot_mcu_port=/dev/ttyACM0
 #siot_mcu_board=arduino:avr:uno
 
 siot_setup() {
   git submodule update --init
   arduino-cli lib install PacketSerial
+  arduino-cli core install arduino:samd
 }
 
 siot_protobuf_gen() {
