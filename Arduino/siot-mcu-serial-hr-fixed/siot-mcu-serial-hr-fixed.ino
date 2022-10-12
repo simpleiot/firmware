@@ -17,6 +17,8 @@ PacketSerial cobsWrapper;
 
 // NOTE: maximum receive buffer length in Uno default serial ISR is 64 bytes.
 uint8_t buffer[256];
+uint8_t bufferhr[256];
+int bufferhrLen;
 
 // kermit
 uint16_t CRC16K(uint8_t *x, uint8_t len)
@@ -78,46 +80,62 @@ void cprintf(const char *fmt, ...)
 	cobsWrapper.update();
 }
 
+unsigned long lastNormalData;
+
 // the setup function runs once when you press reset or power the board
 void setup()
 {
-    Serial.begin(115200);
+	uint16_t crc1 = 0;
+	Serial.begin(115200);
 
-    cobsWrapper.setStream(&Serial);
+	cobsWrapper.setStream(&Serial);
 
-    cprintf("Starting COBS wrapped PB test.");
+	cprintf("Starting COBS wrapped PB test.");
+
+	lastNormalData = millis();
+
+	// send high rate data
+	siot_Serial msg = siot_Serial_init_default;
+	strcpy(msg.subject, "phr");
+	msg.points_count = 1;
+
+	msg.points[0].has_time = true;
+	strcpy(msg.points[0].type, "voltage");
+	msg.points[0].value = 260.5;
+
+	memset(bufferhr, 0x00, sizeof(bufferhr));
+
+	pb_ostream_t stream = pb_ostream_from_buffer(&(bufferhr[1]), sizeof(bufferhr) - 3);
+
+	bool status = pb_encode(&stream, siot_Serial_fields, &msg);
+
+	if (!status) {
+		cprintf("Error encoding static message buffer");
+	}
+
+	bufferhr[0] = 23;
+
+	crc1 = CRC16K(bufferhr, (stream.bytes_written + 1));
+
+	bufferhr[stream.bytes_written + 1] = (uint8_t)((crc1 & 0x00FF));      // CRC Placeholder
+	bufferhr[stream.bytes_written + 2] = (uint8_t)((crc1 & 0xFF00) >> 8); // CRC Placeholder
+
+	bufferhrLen = stream.bytes_written + 3;
 }
 
 int count = 0;
 
 void loop()
 {
-    cprintf("Loop %d", count);
+	unsigned long now = millis();
+	if ((now - lastNormalData) > 1000) {
+		// send low rate data
+		lastNormalData += 1000;
+		cprintf("Loop %d", count);
+	}
 
-    siot_Serial msg = siot_Serial_init_default;
-    msg.points_count = 3;
+	cobsWrapper.send(bufferhr, bufferhrLen);
+	cobsWrapper.update();
 
-    // has_time must be set to true, or we'll get a decode error at the other end
-    msg.points[0].has_time = true;
-    strcpy(msg.points[0].type, "temp");
-    strcpy(msg.points[0].key, "front");
-    msg.points[0].value = 23.3;
-    msg.points[0].index = 0;
-
-    msg.points[1].has_time = true;
-    strcpy(msg.points[1].type, "temp");
-    strcpy(msg.points[1].key, "back");
-    msg.points[1].value = 19.4;
-    msg.points[1].index = 1;
-
-    msg.points[2].has_time = true;
-    strcpy(msg.points[2].type, "voltage");
-    msg.points[2].value = 277;
-
-    if (!send_message(&msg)) {
-        cprintf("Encoding failed");
-    }
-
-    count++;
-    delay(1000);
+	count++;
 }

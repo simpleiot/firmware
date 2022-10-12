@@ -78,6 +78,8 @@ void cprintf(const char *fmt, ...)
 	cobsWrapper.update();
 }
 
+unsigned long lastNormalData;
+
 // the setup function runs once when you press reset or power the board
 void setup()
 {
@@ -86,38 +88,107 @@ void setup()
     cobsWrapper.setStream(&Serial);
 
     cprintf("Starting COBS wrapped PB test.");
+
+    lastNormalData = millis();
 }
 
+// sim values
 int count = 0;
+float temp1 = 23.0;
+bool temp1Up = false;
+float temp2 = 19.0;
+bool temp2Up = false;
+
+void update_sim_values() {
+	if (temp1Up) {
+		temp1 += 0.2;
+		if (temp1 > 50) {
+			temp1Up = false;
+		}
+	} else {
+		temp1 -= 0.2;
+		if (temp1 < 20) {
+			temp1Up = true;
+		}
+	}
+
+	if (temp2Up) {
+		temp2 += 0.2;
+		if (temp2 > 50) {
+			temp2Up = false;
+		}
+	} else {
+		temp2 -= 0.2;
+		if (temp2 < 20) {
+			temp2Up = true;
+		}
+	}
+}
+
+// high rate sim values
+float voltage = 120;
+bool voltageUp = false;
+
+void update_hr_sim_values() {
+	if (voltageUp) {
+		voltage += 0.2;
+		if (voltage > 277) {
+			voltageUp = false;
+		}
+	} else {
+		voltage  -= 0.2;
+		if (voltage < 110) {
+			voltageUp = true;
+		}
+	}
+}
+
 
 void loop()
 {
-    cprintf("Loop %d", count);
+	unsigned long now = millis();
+	if ((now - lastNormalData) > 1000) {
+		// send low rate data
+		lastNormalData += 1000;
+		cprintf("Loop %d", count);
 
-    siot_Serial msg = siot_Serial_init_default;
-    msg.points_count = 3;
+		siot_Serial msg = siot_Serial_init_default;
+		msg.points_count = 2;
 
-    // has_time must be set to true, or we'll get a decode error at the other end
-    msg.points[0].has_time = true;
-    strcpy(msg.points[0].type, "temp");
-    strcpy(msg.points[0].key, "front");
-    msg.points[0].value = 23.3;
-    msg.points[0].index = 0;
+		// has_time must be set to true, or we'll get a decode error at the other end
+		msg.points[0].has_time = true;
+		strcpy(msg.points[0].type, "temp");
+		strcpy(msg.points[0].key, "front");
+		msg.points[0].value = temp1;
+		msg.points[0].index = 0;
 
-    msg.points[1].has_time = true;
-    strcpy(msg.points[1].type, "temp");
-    strcpy(msg.points[1].key, "back");
-    msg.points[1].value = 19.4;
-    msg.points[1].index = 1;
+		msg.points[1].has_time = true;
+		strcpy(msg.points[1].type, "temp");
+		strcpy(msg.points[1].key, "back");
+		msg.points[1].value = temp2;
+		msg.points[1].index = 1;
 
-    msg.points[2].has_time = true;
-    strcpy(msg.points[2].type, "voltage");
-    msg.points[2].value = 277;
+		if (!send_message(&msg)) {
+			cprintf("Encoding failed");
+		}
 
-    if (!send_message(&msg)) {
-        cprintf("Encoding failed");
-    }
+		update_sim_values();
+	}
 
-    count++;
-    delay(1000);
+	// send high rate data
+	siot_Serial msg = siot_Serial_init_default;
+	strcpy(msg.subject, "phr");
+	msg.points_count = 1;
+
+	msg.points[0].has_time = true;
+	strcpy(msg.points[0].type, "voltage");
+	msg.points[0].value = voltage;
+
+	if (!send_message(&msg)) {
+		cprintf("Encoding failed");
+	}
+
+	update_hr_sim_values();
+
+	count++;
 }
