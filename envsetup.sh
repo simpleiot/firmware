@@ -54,6 +54,21 @@ siot_upload_siot_mcu_cobs() {
       -p $siot_mcu_port
 }
 
+siot_build_siot_mcu_serial_hr() {
+  arduino-cli compile \
+    Arduino/siot-mcu-serial-hr \
+    --libraries libraries \
+    -b $siot_mcu_board
+}
+
+siot_upload_siot_mcu_serial_hr() {
+  siot_build_siot_mcu_serial_hr &&
+    arduino-cli upload \
+      Arduino/siot-mcu-serial-hr \
+      -b $siot_mcu_board \
+      -p $siot_mcu_port
+}
+
 siot_pb_test_run() {
   (cd cmd/pb-test && gcc -I ../../libraries/pb \
     -I ../../libraries/nanopb \
