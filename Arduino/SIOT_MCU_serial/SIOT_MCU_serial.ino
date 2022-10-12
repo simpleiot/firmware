@@ -9,6 +9,7 @@
 #include <siot_serial.pb.h>
 #include <point.pb.h>
 #include <timestamp.pb.h>
+#include <stdarg.h>
 
 #include <PacketSerial.h>
 
@@ -66,10 +67,15 @@ bool send_message(siot_Serial *msg)
     return true;
 }
 
-void cobs_print(uint8_t *print_string)
+// format and send ascii message with cobs
+void cprintf(const char *fmt, ...)
 {
-    cobsWrapper.send(print_string, strlen((char*)print_string));
-    cobsWrapper.update();
+	va_list args;
+	va_start(args, fmt);
+	vsprintf((char*)buffer, fmt, args);
+	va_end(args);
+	cobsWrapper.send(buffer, strlen((char*)buffer));
+	cobsWrapper.update();
 }
 
 // the setup function runs once when you press reset or power the board
@@ -79,18 +85,14 @@ void setup()
 
     cobsWrapper.setStream(&Serial);
 
-    sprintf((char*)buffer, "Starting COBS wrapped PB test.\r\n");
-    cobs_print(buffer);
+    cprintf("Starting COBS wrapped PB test.");
 }
 
 int count = 0;
 
 void loop()
 {
-    static uint16_t msg_counter = 0;
-
-    sprintf((char*)buffer, "Loop %d", count);
-    cobs_print(buffer);
+    cprintf("Loop %d", count);
     delay(1000);
 
     count++;
@@ -116,8 +118,7 @@ void loop()
     msg.points[2].value = 277;
 
     if (!send_message(&msg)) {
-        sprintf((char*)buffer, "Encoding failed");
-        cobs_print(buffer);
+        cprintf("Encoding failed");
     }
 
     delay(1000);
