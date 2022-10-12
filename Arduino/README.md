@@ -17,3 +17,15 @@ system.
 - `siot-mcu-serial`: simple example of sending points over USB
 - `siot-mcu-serial-hr`: example of sending both normal and high rate points over
   USB
+- `siot-mcu-serial-hr-fixed`: encode once, and send point as fast as possible
+
+## Performance results
+
+All testing was done with a SEEED Studio XIAO SAMD21 board (48Mhz). Assume
+packet is 30 bytes. SAMD21 USB connection is full speed (12Mbps)
+
+- `siot-mcu-serial-hr`
+  - could send about 1451 pts/second (348,241 Kbps)
+  - disabling sending, could encode 1618 pts/second
+- `siot-mcu-serial-hr-fixed`
+  - could send about 11,000 pts/second (2.64Mbps)
