@@ -1,3 +1,6 @@
+// Warning, the following will not run on UNO/AVR devices -- not enough memory
+// tested on a SAMD21 device
+
 #include <pb_common.h>
 #include <pb_decode.h>
 #include <pb_encode.h>
