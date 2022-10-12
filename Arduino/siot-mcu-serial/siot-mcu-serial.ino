@@ -93,9 +93,6 @@ int count = 0;
 void loop()
 {
     cprintf("Loop %d", count);
-    delay(1000);
-
-    count++;
 
     siot_Serial msg = siot_Serial_init_default;
     msg.points_count = 3;
@@ -121,5 +118,6 @@ void loop()
         cprintf("Encoding failed");
     }
 
+    count++;
     delay(1000);
 }
