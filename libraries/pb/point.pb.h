@@ -11,21 +11,21 @@
 #endif
 
 /* Struct definitions */
-typedef struct _Points {
-    pb_callback_t points;
-} Points;
-
 typedef struct _Point {
-    pb_callback_t type;
+    char type[25];
     float value;
     bool has_time;
     google_protobuf_Timestamp time;
-    pb_callback_t text;
-    pb_callback_t key;
+    char text[25];
+    char key[25];
     int32_t tombstone;
     float index;
-    pb_callback_t data;
 } Point;
+
+typedef struct _Points {
+    pb_size_t points_count;
+    Point points[5];
+} Points;
 
 
 #ifdef __cplusplus
@@ -33,13 +33,12 @@ extern "C" {
 #endif
 
 /* Initializer values for message structs */
-#define Point_init_default                       {{{NULL}, NULL}, 0, false, google_protobuf_Timestamp_init_default, {{NULL}, NULL}, {{NULL}, NULL}, 0, 0, {{NULL}, NULL}}
-#define Points_init_default                      {{{NULL}, NULL}}
-#define Point_init_zero                          {{{NULL}, NULL}, 0, false, google_protobuf_Timestamp_init_zero, {{NULL}, NULL}, {{NULL}, NULL}, 0, 0, {{NULL}, NULL}}
-#define Points_init_zero                         {{{NULL}, NULL}}
+#define Point_init_default                       {"", 0, false, google_protobuf_Timestamp_init_default, "", "", 0, 0}
+#define Points_init_default                      {0, {Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default}}
+#define Point_init_zero                          {"", 0, false, google_protobuf_Timestamp_init_zero, "", "", 0, 0}
+#define Points_init_zero                         {0, {Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero}}
 
 /* Field tags (for use in manual encoding/decoding) */
-#define Points_points_tag                        1
 #define Point_type_tag                           2
 #define Point_value_tag                          4
 #define Point_time_tag                           5
@@ -47,25 +46,24 @@ extern "C" {
 #define Point_key_tag                            11
 #define Point_tombstone_tag                      12
 #define Point_index_tag                          13
-#define Point_data_tag                           14
+#define Points_points_tag                        1
 
 /* Struct field encoding specification for nanopb */
 #define Point_FIELDLIST(X, a) \
-X(a, CALLBACK, SINGULAR, STRING,   type,              2) \
+X(a, STATIC,   SINGULAR, STRING,   type,              2) \
 X(a, STATIC,   SINGULAR, FLOAT,    value,             4) \
 X(a, STATIC,   OPTIONAL, MESSAGE,  time,              5) \
-X(a, CALLBACK, SINGULAR, STRING,   text,              8) \
-X(a, CALLBACK, SINGULAR, STRING,   key,              11) \
+X(a, STATIC,   SINGULAR, STRING,   text,              8) \
+X(a, STATIC,   SINGULAR, STRING,   key,              11) \
 X(a, STATIC,   SINGULAR, INT32,    tombstone,        12) \
-X(a, STATIC,   SINGULAR, FLOAT,    index,            13) \
-X(a, CALLBACK, SINGULAR, BYTES,    data,             14)
-#define Point_CALLBACK pb_default_field_callback
+X(a, STATIC,   SINGULAR, FLOAT,    index,            13)
+#define Point_CALLBACK NULL
 #define Point_DEFAULT NULL
 #define Point_time_MSGTYPE google_protobuf_Timestamp
 
 #define Points_FIELDLIST(X, a) \
-X(a, CALLBACK, REPEATED, MESSAGE,  points,            1)
-#define Points_CALLBACK pb_default_field_callback
+X(a, STATIC,   REPEATED, MESSAGE,  points,            1)
+#define Points_CALLBACK NULL
 #define Points_DEFAULT NULL
 #define Points_points_MSGTYPE Point
 
@@ -77,8 +75,8 @@ extern const pb_msgdesc_t Points_msg;
 #define Points_fields &Points_msg
 
 /* Maximum encoded size of messages (where known) */
-/* Point_size depends on runtime parameters */
-/* Points_size depends on runtime parameters */
+#define Point_size                               123
+#define Points_size                              625
 
 #ifdef __cplusplus
 } /* extern "C" */

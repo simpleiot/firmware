@@ -9,7 +9,7 @@
 PB_BIND(Point, Point, AUTO)
 
 
-PB_BIND(Points, Points, AUTO)
+PB_BIND(Points, Points, 2)
 
 
 
