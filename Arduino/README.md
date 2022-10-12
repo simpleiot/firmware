@@ -5,6 +5,7 @@ be connected to the
 [MCU Serial Client](https://docs.simpleiot.org/docs/user/mcu.html) in SIOT
 system.
 
+- install [arduino-cli](https://arduino.github.io/arduino-cli)
 - `siot_setup` (only run once)
 - `siot_protobuf_gen` (can be used to update generated protobuf files)
 - edit `envsetup.sh` to make sure you are set up for the correct board
