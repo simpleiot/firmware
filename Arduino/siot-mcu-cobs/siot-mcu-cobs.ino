@@ -26,7 +26,7 @@ void loop() {
   msg_counter++;
 
 
-  cobsWrapper.send(cobsTest2Array, 35);
+  cobsWrapper.send((const uint8_t*)cobsTest2Array, 35);
   cobsWrapper.update();
   delay(1000);
 }

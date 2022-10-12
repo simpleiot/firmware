@@ -63,9 +63,9 @@ bool send_message(siot_Serial *msg)
     return true;
 }
 
-void cobs_print(char *print_string)
+void cobs_print(uint8_t *print_string)
 {
-    cobsWrapper.send(print_string, strlen(print_string));
+    cobsWrapper.send(print_string, strlen((char*)print_string));
     cobsWrapper.update();
 }
 
@@ -76,7 +76,7 @@ void setup()
 
     cobsWrapper.setStream(&Serial);
 
-    sprintf(buffer, "Starting COBS wrapped PB test.\r\n");
+    sprintf((char*)buffer, "Starting COBS wrapped PB test.\r\n");
     cobs_print(buffer);
 }
 
@@ -86,20 +86,20 @@ void loop()
 {
     static uint16_t msg_counter = 0;
 
-    sprintf(buffer, "Loop %d", count);
+    sprintf((char*)buffer, "Loop %d", count);
     cobs_print(buffer);
     delay(1000);
 
     count++;
 
     siot_Serial msg = siot_Serial_init_default;
-    msg.points_count = 0;
+    msg.points_count = 1;
     msg.points[0].has_time = true;
     strcpy(msg.points[0].type, "temp");
     msg.points[0].value = 23.3;
 
     if (!send_message(&msg)) {
-        sprintf(buffer, "Encoding failed");
+        sprintf((char*)buffer, "Encoding failed");
         cobs_print(buffer);
     }
 
