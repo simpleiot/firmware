@@ -26,7 +26,7 @@ siot_install_nanopb_library() {
 
 siot_build_siot_mcu_serial() {
   arduino-cli compile \
-    Arduino/SIOT_MCU_serial \
+    Arduino/siot-mcu-serial \
     --libraries libraries \
     -b $siot_mcu_board
 }
@@ -34,7 +34,7 @@ siot_build_siot_mcu_serial() {
 siot_upload_siot_mcu_serial() {
   siot_build_siot_mcu_serial &&
     arduino-cli upload \
-      Arduino/SIOT_MCU_serial \
+      Arduino/siot-mcu-serial \
       -b $siot_mcu_board \
       -p $siot_mcu_port
 }
