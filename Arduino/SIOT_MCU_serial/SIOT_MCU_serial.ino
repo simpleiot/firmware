@@ -93,10 +93,15 @@ void loop()
     count++;
 
     siot_Serial msg = siot_Serial_init_default;
-    msg.points_count = 1;
+    msg.points_count = 2;
+
     msg.points[0].has_time = true;
     strcpy(msg.points[0].type, "temp");
     msg.points[0].value = 23.3;
+
+    msg.points[1].has_time = true;
+    strcpy(msg.points[1].type, "voltage");
+    msg.points[1].value = 277;
 
     if (!send_message(&msg)) {
         sprintf((char*)buffer, "Encoding failed");
