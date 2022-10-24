@@ -123,7 +123,7 @@ void loop()
     msg2.points_count = 10;
     for (int i=0; i<10; i++) {
 	    msg2.points[i].has_time = true;
-	    strcpy(msg.points[i].type, "testPoint");
+	    strcpy(msg2.points[i].type, "testPoint");
 	    msg2.points[i].value = i*2;
 	    msg2.points[i].index = i;
     }
