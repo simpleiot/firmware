@@ -1,4 +1,4 @@
 #siot_serial options
 
 siot_Serial.subject max_size:63
-siot_Serial.points max_count:5
+siot_Serial.points max_count:10

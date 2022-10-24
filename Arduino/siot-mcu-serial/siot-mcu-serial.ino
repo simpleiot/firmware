@@ -16,7 +16,7 @@
 PacketSerial cobsWrapper;
 
 // NOTE: maximum receive buffer length in Uno default serial ISR is 64 bytes.
-uint8_t buffer[256];
+uint8_t buffer[2048];
 
 // kermit
 uint16_t CRC16K(uint8_t *x, uint8_t len)
@@ -116,6 +116,20 @@ void loop()
 
     if (!send_message(&msg)) {
         cprintf("Encoding failed");
+    }
+
+    // send a large message
+    siot_Serial msg2 = siot_Serial_init_default;
+    msg2.points_count = 10;
+    for (int i=0; i<10; i++) {
+	    msg2.points[i].has_time = true;
+	    strcpy(msg.points[i].type, "testPoint");
+	    msg2.points[i].value = i*2;
+	    msg2.points[i].index = i;
+    }
+
+    if (!send_message(&msg2)) {
+        cprintf("Encoding of large message failed");
     }
 
     count++;
