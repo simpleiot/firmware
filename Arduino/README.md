@@ -11,6 +11,9 @@ system.
 - edit `envsetup.sh` to make sure you are set up for the correct board
 - `siot_build_siot_mcu_serial` (build siot MCU example)
 
+When connected to the Simple IoT Go application on a host system, disable the
+client before trying to program the MCU.
+
 ## Projects
 
 - `siot-mcu-cobs`: simple ascii messages wrapped with cobs
