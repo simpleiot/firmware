@@ -13,10 +13,23 @@
 
 #include <PacketSerial.h>
 
+// define delay between consecutive sending of packets
+// note, if you set this to 0, and don't set HR_PACKETS, you may overrun the SIOT host.
+int DELAY_BETWEEN_PACKETS_MS = 500;
+// The following specifies the message to be a "high rate" message which
+// tells the SIOT host to not process it as a normal point, but send
+// it to high-rate message subjects which are processed by clients
+// expecting high rate points. See https://docs.simpleiot.org/docs/ref/api.html
+int HR_PACKETS = 0;
+// define the number of points to send in each message
+// FIXME, for some reason we can't go over 10 for POINT_COUNT -- not sure yet
+// what is going on there
+int POINT_COUNT = 10;
+
 PacketSerial cobsWrapper;
 
 // NOTE: maximum receive buffer length in Uno default serial ISR is 64 bytes.
-uint8_t buffer[2048];
+uint8_t buffer[7000];
 
 // kermit
 uint16_t CRC16K(uint8_t *x, uint8_t len)
@@ -37,11 +50,16 @@ uint16_t CRC16K(uint8_t *x, uint8_t len)
     return crc;
 }
 
+int pb_encoding_time;
+int crc_time;
+int cobs_send_time;
+
 bool send_message(siot_Serial *msg)
 {
     static uint8_t pb_msg_counter = 0;
     uint16_t crc1 = 0;
     int status;
+    int start = micros();
     memset(buffer, 0x00, sizeof(buffer));
 
     pb_ostream_t stream = pb_ostream_from_buffer(&(buffer[1]), sizeof(buffer) - 3);
@@ -52,9 +70,14 @@ bool send_message(siot_Serial *msg)
       return false;
     }
 
+    pb_encoding_time = micros() - start;
+    start = micros();
+
     buffer[0] = pb_msg_counter;
 
     crc1 = CRC16K(buffer, (stream.bytes_written + 1));
+    crc_time = micros() - start;
+    start = micros();
 
     buffer[stream.bytes_written + 1] = (uint8_t)((crc1 & 0x00FF));      // CRC Placeholder
     buffer[stream.bytes_written + 2] = (uint8_t)((crc1 & 0xFF00) >> 8); // CRC Placeholder
@@ -63,6 +86,8 @@ bool send_message(siot_Serial *msg)
 
     cobsWrapper.send(buffer, stream.bytes_written + 3);
     cobsWrapper.update();
+
+    cobs_send_time = micros() - start;
 
     return true;
 }
@@ -95,7 +120,10 @@ void loop()
     cprintf("Loop %d", count);
 
     siot_Serial msg = siot_Serial_init_default;
-    msg.points_count = 3;
+    if (HR_PACKETS) {
+	strcpy(msg.subject, "phr");
+    }
+    msg.points_count = POINT_COUNT;
 
     // has_time must be set to true, or we'll get a decode error at the other end
     msg.points[0].has_time = true;
@@ -114,24 +142,35 @@ void loop()
     strcpy(msg.points[2].type, "voltage");
     msg.points[2].value = 277;
 
+    msg.points[3].has_time = true;
+    strcpy(msg.points[3].type, "metric");
+    strcpy(msg.points[3].key, "pb-encode");
+    msg.points[3].value = pb_encoding_time;
+
+    msg.points[4].has_time = true;
+    strcpy(msg.points[4].type, "metric");
+    strcpy(msg.points[4].key, "crc");
+    msg.points[4].value = crc_time;
+
+    msg.points[5].has_time = true;
+    strcpy(msg.points[5].type, "metric");
+    strcpy(msg.points[5].key, "cobs");
+    msg.points[5].value = cobs_send_time;
+
+    for (int i=6; i<POINT_COUNT; i++) {
+	    msg.points[i].has_time = true;
+	    strcpy(msg.points[i].type, "testPoint");
+	    msg.points[i].value = i*2;
+	    msg.points[i].index = i-6;
+    }
+
     if (!send_message(&msg)) {
         cprintf("Encoding failed");
     }
 
-    // send a large message
-    siot_Serial msg2 = siot_Serial_init_default;
-    msg2.points_count = 10;
-    for (int i=0; i<10; i++) {
-	    msg2.points[i].has_time = true;
-	    strcpy(msg2.points[i].type, "testPoint");
-	    msg2.points[i].value = i*2;
-	    msg2.points[i].index = i;
-    }
-
-    if (!send_message(&msg2)) {
-        cprintf("Encoding of large message failed");
-    }
-
     count++;
-    delay(1000);
+
+    if (DELAY_BETWEEN_PACKETS_MS > 0) {
+    	delay(DELAY_BETWEEN_PACKETS_MS);
+    }
 }
