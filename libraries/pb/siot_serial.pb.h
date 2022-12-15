@@ -14,7 +14,7 @@
 typedef struct _siot_Serial {
     char subject[63];
     pb_size_t points_count;
-    Point points[10];
+    Point points[50];
 } siot_Serial;
 
 
@@ -23,8 +23,8 @@ extern "C" {
 #endif
 
 /* Initializer values for message structs */
-#define siot_Serial_init_default                 {"", 0, {Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default}}
-#define siot_Serial_init_zero                    {"", 0, {Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero}}
+#define siot_Serial_init_default                 {"", 0, {Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default, Point_init_default}}
+#define siot_Serial_init_zero                    {"", 0, {Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero, Point_init_zero}}
 
 /* Field tags (for use in manual encoding/decoding) */
 #define siot_Serial_subject_tag                  1
@@ -44,7 +44,7 @@ extern const pb_msgdesc_t siot_Serial_msg;
 #define siot_Serial_fields &siot_Serial_msg
 
 /* Maximum encoded size of messages (where known) */
-#define siot_Serial_size                         1314
+#define siot_Serial_size                         6314
 
 #ifdef __cplusplus
 } /* extern "C" */
