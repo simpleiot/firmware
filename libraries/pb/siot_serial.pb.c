@@ -6,7 +6,7 @@
 #error Regenerate this file with the current version of nanopb generator.
 #endif
 
-PB_BIND(siot_Serial, siot_Serial, 2)
+PB_BIND(siot_Serial, siot_Serial, 4)
 
 
 
