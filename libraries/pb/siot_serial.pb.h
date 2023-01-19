@@ -44,7 +44,7 @@ extern const pb_msgdesc_t siot_Serial_msg;
 #define siot_Serial_fields &siot_Serial_msg
 
 /* Maximum encoded size of messages (where known) */
-#define siot_Serial_size                         6314
+#define siot_Serial_size                         5114
 
 #ifdef __cplusplus
 } /* extern "C" */

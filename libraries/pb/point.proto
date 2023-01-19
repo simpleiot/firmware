@@ -1,11 +1,8 @@
 syntax = "proto3";
 
-import "timestamp.proto";
-
 message Point {
   string type = 2;
   float value = 4;
-  google.protobuf.Timestamp time = 5;
   float index = 13;
   string text = 8;
   string key = 11;
@@ -14,4 +11,12 @@ message Point {
 
 message Points {
   repeated Point points = 1;
+}
+
+message PointArray {
+  uint64 starttime = 1;
+  string type = 2;
+  string key = 3;
+  float samplerate = 4;
+  repeated float values = 5;
 }
