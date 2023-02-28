@@ -12,4 +12,7 @@ PB_BIND(Point, Point, AUTO)
 PB_BIND(Points, Points, 2)
 
 
+PB_BIND(PointArray, PointArray, 4)
+
+
 

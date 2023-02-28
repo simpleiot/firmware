@@ -2,4 +2,8 @@ Point.type max_size:25
 Point.text max_size:25
 Point.key max_size:25
 
-Points.points max_count:5
+Points.points max_count:10
+
+PointArray.type max_size:25
+PointArray.key max_size:25
+PointArray.values max_count: 1500
