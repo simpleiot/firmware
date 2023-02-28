@@ -18,5 +18,5 @@ message PointArray {
   string type = 2;
   string key = 3;
   float samplerate = 4;
-  repeated float values = 5;
+  repeated float values = 5 [packed=true];
 }

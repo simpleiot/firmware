@@ -6,4 +6,4 @@ Points.points max_count:10
 
 PointArray.type max_size:25
 PointArray.key max_size:25
-PointArray.values max_count: 15000
+PointArray.values max_count: 1500
